@@ -1,0 +1,42 @@
+<?php
+
+return [
+    'Lead' => [
+        'first_name',
+        'last_name',
+        'email',
+        'phone',
+        'alt_phone',
+        'address',
+        'city',
+        'state',
+        'postal',
+        'country',
+        'ip',
+        'date_subscribed',
+        'gender',
+        'offer_url',
+        'dob',
+        'tax_debt_amount',
+        'cc_debt_amount',
+        'type_of_debt',
+        'home_owner',
+        'import_date',
+        'jornaya_id',
+        'phone_type',
+        'trusted_form_id',
+        'opt_in',
+        'sub_id_1',
+        'sub_id_2',
+        'sub_id_3',
+        'sub_id_4',
+        'sub_id_5',
+        'aff_id_1',
+        'aff_id_2',
+        'lead_id',
+        'ef_id',
+        'ck_id',
+        'page_url',
+        'list_id'
+    ]
+];
