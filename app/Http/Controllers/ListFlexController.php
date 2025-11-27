@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use App\Jobs\ProcessLeadData;
 use Illuminate\Support\Facades\DB;
-use App\Models\Lead;
+use App\Models\AllContact;
 use App\Models\SourceSite;
 use App\Models\FailedToDispatchLead;
 use App\Repositories\{

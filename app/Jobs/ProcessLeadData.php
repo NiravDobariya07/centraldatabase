@@ -29,7 +29,7 @@ class ProcessLeadData implements ShouldQueue
         array $requestData
     ) {
         $this->requestData = $requestData;
-        $this->mappedPostData = convertKeysUsingMapping($requestData, 'Lead');
+        $this->mappedPostData = convertKeysUsingMapping($requestData, 'AllContact');
         $this->leadRepository = new LeadRepository();
         $this->campaignListIdRepository = new CampaignListIdRepository();
         $this->sourceSiteRepository = new SourceSiteRepository();
@@ -47,39 +47,49 @@ class ProcessLeadData implements ShouldQueue
             $leadPostData                   = $this->mappedPostData['mapped_data'];
             $leadPostData['extra_fields']   = $this->mappedPostData['extra_fields'];
 
-            // Check if the page URL exists and extract domain
+            // Extract email domain if email exists
+            if (!empty($leadPostData['email'])) {
+                $emailParts = explode('@', $leadPostData['email']);
+                if (count($emailParts) === 2) {
+                    $leadPostData['email_domain'] = $emailParts[1];
+                }
+            }
+
+            // Extract optin domain from page_url if exists
             if (isset($leadPostData['page_url'])) {
                 $url = parse_url($leadPostData['page_url']);
-                
-                // Extract domain from the URL
                 $sourceDomain = !empty($url['host']) ? $url['host'] : $leadPostData['page_url'];
-
                 if (!empty($sourceDomain)) {
-                    $sourceSite = $this->sourceSiteRepository->firstOrCreate(['domain'=> $sourceDomain]);
-                    if (!empty($sourceSite)) {
-                        $leadPostData['source_site_id'] = $sourceSite->id;
-                    }
+                    $leadPostData['optin_domain'] = $sourceDomain;
                 }
             }
 
-            if (!empty($leadPostData['list_id'])) {
-                $campaignList = $this->campaignListIdRepository->firstOrCreate(['list_id'=> $leadPostData['list_id']]);
-                if (!empty($campaignList)) {
-                    $leadPostData['campaign_list_id'] = $campaignList->id;
-                }
+            // Ip Address - map to ip_address field
+            if (isset($leadPostData['ip_address'])) {
+                $leadPostData['ip_address'] = filter_var($leadPostData['ip_address'], FILTER_VALIDATE_IP) ? $leadPostData['ip_address'] : null;
+            } elseif (isset($leadPostData['ip'])) {
+                $leadPostData['ip_address'] = filter_var($leadPostData['ip'], FILTER_VALIDATE_IP) ? $leadPostData['ip'] : null;
+                unset($leadPostData['ip']);
             }
 
-            // Ip Address
-            $leadPostData['ip'] = filter_var($leadPostData['ip'], FILTER_VALIDATE_IP) ? $leadPostData['ip'] : null;
+            // Date Fields - handle lead_time_stamp
+            if (!empty($leadPostData['lead_time_stamp'])) {
+                $leadPostData['lead_time_stamp'] = $this->parseDate($leadPostData['lead_time_stamp'], 'Y-m-d H:i:s', 'Y-m-d H:i:s');
+            } elseif (!empty($leadPostData['date_subscribed'])) {
+                $leadPostData['lead_time_stamp'] = $this->parseDate($leadPostData['date_subscribed'], 'Y-m-d H:i:s', 'Y-m-d H:i:s');
+                unset($leadPostData['date_subscribed']);
+            }
 
-            // Numeric Fields
-            $leadPostData['tax_debt_amount'] = is_numeric(trim($leadPostData['tax_debt_amount'] ?? '')) ? $leadPostData['tax_debt_amount'] : null;
-            $leadPostData['cc_debt_amount'] = is_numeric(trim($leadPostData['cc_debt_amount'] ?? '')) ? $leadPostData['cc_debt_amount'] : null;
+            // Remove fields that don't exist in all_contacts table
+            $fieldsToRemove = ['alt_phone', 'address', 'city', 'state', 'postal', 'country', 'date_subscribed',
+                              'gender', 'offer_url', 'dob', 'import_date', 'phone_type', 'tax_debt_amount',
+                              'cc_debt_amount', 'type_of_debt', 'home_owner', 'opt_in', 'sub_id_1', 'sub_id_2',
+                              'sub_id_3', 'sub_id_4', 'sub_id_5', 'aff_id_1', 'aff_id_2', 'lead_id', 'page_url',
+                              'ef_id', 'ck_id', 'source_site_id', 'campaign_list_id', 'extra_fields'];
 
-            // Date Fields
-            $leadPostData['date_subscribed']  = !empty($leadPostData['date_subscribed']) ? $this->parseDate($leadPostData['date_subscribed'], 'Y-m-d H:i:s', 'Y-m-d H:i:s') : null;
-            $leadPostData['dob']              = !empty($leadPostData['dob']) ? $this->parseDate($leadPostData['dob'], 'Y-m-d', 'Y-m-d') : null;
-            $leadPostData['import_date']      = !empty($leadPostData['import_date']) ? $this->parseDate($leadPostData['import_date'], 'Y-m-d H:i:s', 'Y-m-d H:i:s') : null;
+            foreach ($fieldsToRemove as $field) {
+                unset($leadPostData[$field]);
+            }
 
             // Store the lead data in the repository
             $lead = $this->leadRepository->store($leadPostData);

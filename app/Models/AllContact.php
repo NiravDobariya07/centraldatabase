@@ -4,16 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Lead extends Model
+class AllContact extends Model
 {
-    protected $table = 'leads';
+    protected $table = 'all_contacts';
 
     protected $fillable = [
         'first_name',
         'last_name',
+        'lead_time_stamp',
         'email',
-        'phone',
         'email_domain',
+        'phone',
         'optin_domain',
         'domain_abt',
         'aff_id',
@@ -28,6 +29,7 @@ class Lead extends Model
         'esp',
         'offer_id',
         'is_email_duplicate',
+        'list_id',
         'eoapi_success',
         'is_ongage',
         'ongage_response',
@@ -35,9 +37,13 @@ class Lead extends Model
     ];
 
     protected $casts = [
+        'lead_time_stamp' => 'datetime',
         'is_email_duplicate' => 'boolean',
         'eoapi_success' => 'boolean',
         'is_ongage' => 'boolean',
         'ongage_at' => 'datetime',
+        'resultid' => 'integer',
+        'offer_id' => 'integer',
+        'list_id' => 'integer',
     ];
 }

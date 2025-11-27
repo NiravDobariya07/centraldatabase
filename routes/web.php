@@ -56,9 +56,29 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::get('/leads', [LeadsController::class, 'index'])->name('leads.index');
     Route::get('/leads/{id}', [LeadsController::class, 'show'])->name('leads.show');
     Route::post('/leads-report', [LeadsController::class, 'leadsReport'])->name('leads.report');
+    Route::get('/leads/test-leads/get', [LeadsController::class, 'getTestLeads'])->name('leads.test-leads.get');
+    Route::post('/leads/test-leads/delete', [LeadsController::class, 'deleteTestLeads'])->name('leads.test-leads.delete');
     Route::post('/leads/schedule-export', [ExportController::class, 'scheduleLeadExport'])->name('leads.export');
     Route::post('/save-lead-field-setting', [LeadsController::class, 'saveLeadFieldSetting'])->name('save.lead.field.setting');
     Route::get('/reset-lead-field-setting', [LeadsController::class, 'resetLeadFieldSetting'])->name('reset.lead.field.setting');
+
+    // Consumer Insite Contacts Routes
+    Route::get('/consumer-insite-contacts', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'index'])->name('consumer-insite-contacts.index');
+    Route::get('/consumer-insite-contacts/{id}', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'show'])->name('consumer-insite-contacts.show');
+    Route::post('/save-consumer-insite-contact-field-setting', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'saveContactFieldSetting'])->name('save.consumer-insite-contact.field.setting');
+    Route::get('/reset-consumer-insite-contact-field-setting', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'resetContactFieldSetting'])->name('reset.consumer-insite-contact.field.setting');
+    Route::get('/consumer-insite-contacts/test-contacts/get', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'getTestContacts'])->name('consumer-insite-contacts.test-contacts.get');
+    Route::post('/consumer-insite-contacts/test-contacts/delete', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'deleteTestContacts'])->name('consumer-insite-contacts.test-contacts.delete');
+    Route::post('/consumer-insite-contacts/schedule-export', [ExportController::class, 'scheduleConsumerInsiteContactExport'])->name('consumer-insite-contacts.export');
+
+    // TRA Contacts Routes
+    Route::get('/tra-contacts', [\App\Http\Controllers\TraContactsController::class, 'index'])->name('tra-contacts.index');
+    Route::get('/tra-contacts/{id}', [\App\Http\Controllers\TraContactsController::class, 'show'])->name('tra-contacts.show');
+    Route::post('/save-tra-contact-field-setting', [\App\Http\Controllers\TraContactsController::class, 'saveContactFieldSetting'])->name('save.tra-contact.field.setting');
+    Route::get('/reset-tra-contact-field-setting', [\App\Http\Controllers\TraContactsController::class, 'resetContactFieldSetting'])->name('reset.tra-contact.field.setting');
+    Route::get('/tra-contacts/test-contacts/get', [\App\Http\Controllers\TraContactsController::class, 'getTestContacts'])->name('tra-contacts.test-contacts.get');
+    Route::post('/tra-contacts/test-contacts/delete', [\App\Http\Controllers\TraContactsController::class, 'deleteTestContacts'])->name('tra-contacts.test-contacts.delete');
+    Route::post('/tra-contacts/schedule-export', [ExportController::class, 'scheduleTraContactExport'])->name('tra-contacts.export');
 
     Route::get('/exports-listing', [ExportController::class, 'exportsListing'])->name('leads.export.exports-listing');
     Route::get('/exports-files-listing', [ExportController::class, 'exportsFilesListing'])->name('leads.export.exports-files-listing');

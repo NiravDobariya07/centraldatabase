@@ -34,7 +34,7 @@ if (!function_exists('getActiveLogCategories')) {
 
 /**
  * Common Logging Function
- * 
+ *
  * @param string $category Log category name
  * @param string $message Log message
  * @param array  $context Additional context data
@@ -213,8 +213,13 @@ function sanitizeDataForUtf8($data) {
     return $data;
 }
 
-function getLeadKeyByValue(string $value): string {
-    $mapping = config('key_mappings.Lead');
+function getLeadKeyByValue(string $value, string $model = 'AllContact'): string {
+    $mapping = config("key_mappings.{$model}");
+
+    if (!$mapping) {
+        // Fallback to AllContact if model mapping not found
+        $mapping = config('key_mappings.AllContact');
+    }
 
     return array_search($value, $mapping, true) ?: $value;
 }

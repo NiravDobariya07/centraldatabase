@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Console\Commands\DeleteExpiredTwoFactorCodes;
-use App\Models\Lead;
+use App\Models\AllContact;
 
 // Register scheduled commands only if DB is connected
 try {
@@ -32,10 +32,10 @@ try {
 //     Lead::chunk(10000, function ($leads) use (&$updatedCount) {
 //         foreach ($leads as $lead) {
 //             $fields = [
-//                 'first_name', 'last_name', 'email', 'phone', 'alt_phone', 'address', 'city', 
-//                 'state', 'postal', 'country', 'list_id', 'lead_id', 'jornaya_id', 'trusted_form_id', 
-//                 'tax_debt_amount', 'cc_debt_amount', 'type_of_debt', 'home_owner', 'offer_url', 
-//                 'page_url', 'source_site', 'sub_id_1', 'sub_id_2', 'sub_id_3', 'sub_id_4', 
+//                 'first_name', 'last_name', 'email', 'phone', 'alt_phone', 'address', 'city',
+//                 'state', 'postal', 'country', 'list_id', 'lead_id', 'jornaya_id', 'trusted_form_id',
+//                 'tax_debt_amount', 'cc_debt_amount', 'type_of_debt', 'home_owner', 'offer_url',
+//                 'page_url', 'source_site', 'sub_id_1', 'sub_id_2', 'sub_id_3', 'sub_id_4',
 //                 'sub_id_5', 'aff_id_1', 'aff_id_2', 'ef_id', 'ck_id'
 //             ];
 

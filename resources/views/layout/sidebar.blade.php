@@ -82,6 +82,20 @@
               </a>
             </li>
 
+            <li class="menu-item menu-item-consumer-insite-contacts">
+              <a href="{{ route('consumer-insite-contacts.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-group"></i>
+                <div data-i18n="Analytics">Consumer Insite Contacts</div>
+              </a>
+            </li>
+
+            <li class="menu-item menu-item-tra-contacts">
+              <a href="{{ route('tra-contacts.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-list-ul"></i>
+                <div data-i18n="Analytics">TRA Lead Listing</div>
+              </a>
+            </li>
+
             <li class="menu-item menu-item-exports">
               <a href="{{ route('leads.export.exports-listing') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-export"></i>

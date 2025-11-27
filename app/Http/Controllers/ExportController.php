@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\{ Lead, Export, ExportFile, SourceSite, CampaignListId };
+use App\Models\{ AllContact, Export, ExportFile, SourceSite, CampaignListId };
 use App\Constants\AppConstants;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -280,14 +280,60 @@ class ExportController extends Controller
                 $exportScheduledData->update(['next_run_at' => $exportScheduledData->calculateNextRun()]);
 
                 if ($exportScheduledData->frequency == AppConstants::EXPORT_FREQUENCY_OPTIONS['ONE_TIME']) {
-                    $totalExportableRecordsCount = $this->getExportableRecordCount($exportScheduledData->id);
+                    // Process export immediately for "one_time" frequency
                     $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SCHEDULED']]);
-                    $this->dispatchExportJob($exportScheduledData->id, $totalExportableRecordsCount, 10);
+
+                    try {
+                        // Process export synchronously
+                        $this->processLeadExport($exportScheduledData->id);
+
+                        // Small delay to ensure files are fully written to disk
+                        usleep(500000); // 0.5 second delay
+
+                        // Reload export to get generated files
+                        $exportScheduledData->refresh();
+                        $exportFiles = $exportScheduledData->exportFiles;
+
+                        // Prepare file download links
+                        $fileLinks = [];
+                        foreach ($exportFiles as $file) {
+                            // Verify file exists before adding to download list
+                            if (Storage::disk('local')->exists($file->file_path)) {
+                                $fileLinks[] = [
+                                    'id' => $file->id,
+                                    'name' => $file->file_name,
+                                    'format' => $file->file_format,
+                                    'download_url' => route('export.download.file', $file->id)
+                                ];
+                            }
+                        }
+
+                        // Update status to success
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SUCCESS']]);
+
+                        // Successful response with file links
+                        return response()->json([
+                            'message'       => 'Export completed successfully!',
+                            'exportScheduledData' => $exportScheduledData,
+                            'files' => $fileLinks,
+                            'instant_export' => true
+                        ]);
+                    } catch (\Exception $e) {
+                        // Update status to failed
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+                        reportException($e, "Error processing instant export in scheduleLeadExport method");
+                        return response()->json([
+                            'message' => 'An error occurred while processing the export.',
+                            'error'   => $e->getMessage(),
+                        ], 500);
+                    }
                 }
-                // Successful response
+
+                // Successful response for scheduled exports
                 return response()->json([
                     'message'       => 'Export scheduled successfully!',
-                    'exportScheduledData' => $exportScheduledData
+                    'exportScheduledData' => $exportScheduledData,
+                    'instant_export' => false
                 ]);
             } else {
                 return response()->json([
@@ -303,6 +349,298 @@ class ExportController extends Controller
         }
     }
 
+    public function scheduleConsumerInsiteContactExport(Request $request) {
+        try {
+            $scheduleContactExportPostData = $request->input('schedule_contact_export_data', []);
+
+            // Define validation rules
+            $rules = [
+                'frequency'      => 'required|string|in:one_time,daily,weekly,monthly,custom',
+                'export_type'    => 'required|string',
+                'export_formats' => 'required|array|min:1',
+                'export_columns' => 'required|array|min:1',
+            ];
+
+            // Define custom error messages
+            $messages = [
+                'frequency.required'      => 'The frequency field is required.',
+                'export_type.required'    => 'The export type field is required.',
+                'export_formats.required' => 'The export format field is required.',
+                'export_formats.array'    => 'The export format must be an array.',
+                'export_formats.min'      => 'The export format must contain at least one item.',
+                'export_columns.required' => 'The export columns field is required.',
+                'export_columns.array'    => 'The export columns must be an array.',
+                'export_columns.min'      => 'The export columns must contain at least one item.',
+            ];
+
+            // Perform validation
+            $validator = Validator::make($scheduleContactExportPostData, $rules, $messages);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors'  => $validator->errors(),
+                ], 422); // 422 Unprocessable Entity
+            }
+
+            // Default title if not provided
+            $defaultTitle = Carbon::now()->format('l, F j, Y');
+
+            $additionalData = [];
+            if(!empty($scheduleContactExportPostData['sort_by_field_name']) && !empty($scheduleContactExportPostData['sort_by_field_order'])) {
+                $additionalData['sort_by'] = [
+                    'field' => $scheduleContactExportPostData['sort_by_field_name'],
+                    'sorting_order' => $scheduleContactExportPostData['sort_by_field_order']
+                ];
+            }
+
+            if (!empty($scheduleContactExportPostData['export_in_batches'])) {
+                $additionalData['export_in_batches'] = 1;
+            }
+
+            $scheduleContactExportPayloadData = [
+                'user_id'           => auth()->id(),
+                'title'             => !empty(trim($scheduleContactExportPostData['title'])) ? trim($scheduleContactExportPostData['title']) : $defaultTitle,
+                'description'       => !empty(trim($scheduleContactExportPostData['description'])) ? trim($scheduleContactExportPostData['description']) : null,
+                'file_prefix'       => !empty(trim($scheduleContactExportPostData['file_prefix'])) ? trim($scheduleContactExportPostData['file_prefix']) : null,
+                'export_formats'    => !empty($scheduleContactExportPostData['export_formats']) ? $scheduleContactExportPostData['export_formats'] : null,
+                'columns'           => !empty($scheduleContactExportPostData['export_columns']) ? $scheduleContactExportPostData['export_columns'] : null,
+                'frequency'         => !empty($scheduleContactExportPostData['frequency']) ? $scheduleContactExportPostData['frequency'] : null,
+                'day_of_week'       => !empty($scheduleContactExportPostData['day_of_week']) ? $scheduleContactExportPostData['day_of_week'] : null,
+                'day_of_month'      => !empty($scheduleContactExportPostData['day_of_month']) ? $scheduleContactExportPostData['day_of_month'] : null,
+                'time'              => !empty($scheduleContactExportPostData['time']) ? $scheduleContactExportPostData['time'] : null,
+                'additional_data'   => $additionalData,
+                'runing_status'     => AppConstants::EXPORT_RUNING_STATUS['PENDING'],
+                'status'            => AppConstants::EXPORT_STATUSES['ACTIVE']
+            ];
+
+            if (!empty($scheduleContactExportPostData['export_type']) && $scheduleContactExportPostData['export_type'] == 'export_filtered_data') {
+                $scheduleContactExportPayloadData['filters'] = !empty($scheduleContactExportPostData['filters']) ? $scheduleContactExportPostData['filters'] : null;
+            }
+
+            // Insert into database
+            $exportScheduledData = Export::create($scheduleContactExportPayloadData);
+
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['next_run_at' => $exportScheduledData->calculateNextRun()]);
+
+                if ($exportScheduledData->frequency == AppConstants::EXPORT_FREQUENCY_OPTIONS['ONE_TIME']) {
+                    // Process export immediately for "one_time" frequency
+                    $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SCHEDULED']]);
+
+                    try {
+                        // Process export synchronously
+                        $this->processConsumerInsiteContactExport($exportScheduledData->id);
+
+                        // Small delay to ensure files are fully written to disk
+                        usleep(500000); // 0.5 second delay
+
+                        // Reload export to get generated files
+                        $exportScheduledData->refresh();
+                        $exportFiles = $exportScheduledData->exportFiles;
+
+                        // Prepare file download links
+                        $fileLinks = [];
+                        foreach ($exportFiles as $file) {
+                            // Verify file exists before adding to download list
+                            if (Storage::disk('local')->exists($file->file_path)) {
+                                $fileLinks[] = [
+                                    'id' => $file->id,
+                                    'name' => $file->file_name,
+                                    'format' => $file->file_format,
+                                    'download_url' => route('export.download.file', $file->id)
+                                ];
+                            }
+                        }
+
+                        // Update status to success
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SUCCESS']]);
+
+                        // Successful response with file links
+                        return response()->json([
+                            'message'       => 'Export completed successfully!',
+                            'exportScheduledData' => $exportScheduledData,
+                            'files' => $fileLinks,
+                            'instant_export' => true
+                        ]);
+                    } catch (\Exception $e) {
+                        // Update status to failed
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+                        reportException($e, "Error processing instant export in scheduleConsumerInsiteContactExport method");
+                        return response()->json([
+                            'message' => 'An error occurred while processing the export.',
+                            'error'   => $e->getMessage(),
+                        ], 500);
+                    }
+                }
+
+                // Successful response for scheduled exports
+                return response()->json([
+                    'message'       => 'Export scheduled successfully!',
+                    'exportScheduledData' => $exportScheduledData,
+                    'instant_export' => false
+                ]);
+            } else {
+                return response()->json([
+                    'message'       => 'Export could not scheduled successfully!'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            reportException($e, "Error schedule Consumer Insite Contact Export in scheduleConsumerInsiteContactExport method");
+            return response()->json([
+                'message' => 'An error occurred while scheduling the export.',
+                'error'   => $e->getMessage(),
+            ], 500); // 500 Internal Server Error
+        }
+    }
+
+    public function scheduleTraContactExport(Request $request) {
+        try {
+            $scheduleContactExportPostData = $request->input('schedule_contact_export_data', []);
+
+            // Define validation rules
+            $rules = [
+                'frequency'      => 'required|string|in:one_time,daily,weekly,monthly,custom',
+                'export_type'    => 'required|string',
+                'export_formats' => 'required|array|min:1',
+                'export_columns' => 'required|array|min:1',
+            ];
+
+            // Define custom error messages
+            $messages = [
+                'frequency.required'      => 'The frequency field is required.',
+                'export_type.required'    => 'The export type field is required.',
+                'export_formats.required' => 'The export format field is required.',
+                'export_formats.array'    => 'The export format must be an array.',
+                'export_formats.min'      => 'The export format must contain at least one item.',
+                'export_columns.required' => 'The export columns field is required.',
+                'export_columns.array'    => 'The export columns must be an array.',
+                'export_columns.min'      => 'The export columns must contain at least one item.',
+            ];
+
+            // Perform validation
+            $validator = Validator::make($scheduleContactExportPostData, $rules, $messages);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors'  => $validator->errors(),
+                ], 422); // 422 Unprocessable Entity
+            }
+
+            // Default title if not provided
+            $defaultTitle = Carbon::now()->format('l, F j, Y');
+
+            $additionalData = [];
+            if(!empty($scheduleContactExportPostData['sort_by_field_name']) && !empty($scheduleContactExportPostData['sort_by_field_order'])) {
+                $additionalData['sort_by'] = [
+                    'field' => $scheduleContactExportPostData['sort_by_field_name'],
+                    'sorting_order' => $scheduleContactExportPostData['sort_by_field_order']
+                ];
+            }
+
+            if (!empty($scheduleContactExportPostData['export_in_batches'])) {
+                $additionalData['export_in_batches'] = 1;
+            }
+
+            $scheduleContactExportPayloadData = [
+                'user_id'           => auth()->id(),
+                'title'             => !empty(trim($scheduleContactExportPostData['title'])) ? trim($scheduleContactExportPostData['title']) : $defaultTitle,
+                'description'       => !empty(trim($scheduleContactExportPostData['description'])) ? trim($scheduleContactExportPostData['description']) : null,
+                'file_prefix'       => !empty(trim($scheduleContactExportPostData['file_prefix'])) ? trim($scheduleContactExportPostData['file_prefix']) : null,
+                'export_formats'    => !empty($scheduleContactExportPostData['export_formats']) ? $scheduleContactExportPostData['export_formats'] : null,
+                'columns'           => !empty($scheduleContactExportPostData['export_columns']) ? $scheduleContactExportPostData['export_columns'] : null,
+                'frequency'         => !empty($scheduleContactExportPostData['frequency']) ? $scheduleContactExportPostData['frequency'] : null,
+                'day_of_week'       => !empty($scheduleContactExportPostData['day_of_week']) ? $scheduleContactExportPostData['day_of_week'] : null,
+                'day_of_month'      => !empty($scheduleContactExportPostData['day_of_month']) ? $scheduleContactExportPostData['day_of_month'] : null,
+                'time'              => !empty($scheduleContactExportPostData['time']) ? $scheduleContactExportPostData['time'] : null,
+                'additional_data'   => $additionalData,
+                'runing_status'     => AppConstants::EXPORT_RUNING_STATUS['PENDING'],
+                'status'            => AppConstants::EXPORT_STATUSES['ACTIVE']
+            ];
+
+            if (!empty($scheduleContactExportPostData['export_type']) && $scheduleContactExportPostData['export_type'] == 'export_filtered_data') {
+                $scheduleContactExportPayloadData['filters'] = !empty($scheduleContactExportPostData['filters']) ? $scheduleContactExportPostData['filters'] : null;
+            }
+
+            // Insert into database
+            $exportScheduledData = Export::create($scheduleContactExportPayloadData);
+
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['next_run_at' => $exportScheduledData->calculateNextRun()]);
+
+                if ($exportScheduledData->frequency == AppConstants::EXPORT_FREQUENCY_OPTIONS['ONE_TIME']) {
+                    // Process export immediately for "one_time" frequency
+                    $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SCHEDULED']]);
+
+                    try {
+                        // Process export synchronously
+                        $this->processTraContactExport($exportScheduledData->id);
+
+                        // Small delay to ensure files are fully written to disk
+                        usleep(500000); // 0.5 second delay
+
+                        // Reload export to get generated files
+                        $exportScheduledData->refresh();
+                        $exportFiles = $exportScheduledData->exportFiles;
+
+                        // Prepare file download links
+                        $fileLinks = [];
+                        foreach ($exportFiles as $file) {
+                            // Verify file exists before adding to download list
+                            if (Storage::disk('local')->exists($file->file_path)) {
+                                $fileLinks[] = [
+                                    'id' => $file->id,
+                                    'name' => $file->file_name,
+                                    'format' => $file->file_format,
+                                    'download_url' => route('export.download.file', $file->id)
+                                ];
+                            }
+                        }
+
+                        // Update status to success
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SUCCESS']]);
+
+                        // Successful response with file links
+                        return response()->json([
+                            'message'       => 'Export completed successfully!',
+                            'exportScheduledData' => $exportScheduledData,
+                            'files' => $fileLinks,
+                            'instant_export' => true
+                        ]);
+                    } catch (\Exception $e) {
+                        // Update status to failed
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+                        reportException($e, "Error processing instant export in scheduleTraContactExport method");
+                        return response()->json([
+                            'message' => 'An error occurred while processing the export.',
+                            'error'   => $e->getMessage(),
+                        ], 500);
+                    }
+                }
+
+                // Successful response for scheduled exports
+                return response()->json([
+                    'message'       => 'Export scheduled successfully!',
+                    'exportScheduledData' => $exportScheduledData,
+                    'instant_export' => false
+                ]);
+            } else {
+                return response()->json([
+                    'message'       => 'Export could not scheduled successfully!'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            reportException($e, "Error schedule TRA Contact Export in scheduleTraContactExport method");
+            return response()->json([
+                'message' => 'An error occurred while scheduling the export.',
+                'error'   => $e->getMessage(),
+            ], 500); // 500 Internal Server Error
+        }
+    }
+
     public function downloadExportFile($exportFileId) {
         try {
             if (empty($exportFileId)) {
@@ -311,8 +649,24 @@ class ExportController extends Controller
 
             $exportFileData = ExportFile::findOrFail($exportFileId);
 
-            if (!empty($exportFileData->file_path) && Storage::exists($exportFileData->file_path)) {
-                return Storage::download($exportFileData->file_path);
+            if (!empty($exportFileData->file_path)) {
+                // Check if file exists in storage
+                if (Storage::disk('local')->exists($exportFileData->file_path)) {
+                    $filePath = Storage::disk('local')->path($exportFileData->file_path);
+
+                    // Set proper headers for download
+                    $headers = [
+                        'Content-Type' => $exportFileData->file_format === 'csv'
+                            ? 'text/csv'
+                            : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'Content-Disposition' => 'attachment; filename="' . $exportFileData->file_name . '"',
+                        'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                        'Pragma' => 'no-cache',
+                        'Expires' => '0',
+                    ];
+
+                    return response()->download($filePath, $exportFileData->file_name, $headers);
+                }
             }
 
             return redirect()->back()->with('error', 'Export file not found or might be deleted');

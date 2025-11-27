@@ -1,6 +1,6 @@
 @extends('layout.master')
 
-@section('page-title', config('app.name') . ' - Leads Listing')
+@section('page-title', config('app.name') . ' - TRA Lead Listing')
 
 @section('custom-page-style')
     <style>
@@ -47,39 +47,16 @@
             transition: color 0.3s ease, transform 0.3s ease;
         }
 
-        #leads-table {
-            table-layout: auto; /* Allows flexible column sizing */
-            width: 100%; /* Ensures table uses available space */
+        #tra-contacts-table {
+            table-layout: auto;
+            width: 100%;
         }
 
-        #leads-table th, #leads-table td {
-            white-space: nowrap; /* Prevents text from wrapping */
-            min-width: 50px; /* Ensures columns don't shrink too much */
-            max-width: 1000px; /* Prevents excessively wide columns */
+        #tra-contacts-table th, #tra-contacts-table td {
+            white-space: nowrap;
+            min-width: 50px;
+            max-width: 1000px;
             overflow: auto;
-        }
-
-        /* Remove any separator lines between action buttons */
-        .mb-4 button.btn {
-            border-left: none !important;
-            border-right: none !important;
-        }
-
-        .mb-4 button.btn + button.btn {
-            border-left: none !important;
-        }
-
-        /* Remove any pseudo-elements that might create separator lines */
-        .mb-4 button.btn::before,
-        .mb-4 button.btn::after {
-            display: none !important;
-        }
-
-        /* Ensure no outline or box-shadow creates separator effect */
-        .mb-4 button.btn:focus,
-        .mb-4 button.btn:active {
-            box-shadow: none !important;
-            outline: none !important;
         }
     </style>
 @endsection
@@ -96,7 +73,7 @@
                 <div class="row">
                     <div class="col-5">
                         <h5 class="fs-3 fw-bolder card-title text-primary">
-                            Leads List
+                            TRA Lead Listing
                             <span id="column-customisation-settings" class="btn btn-light setting-off px-1">
                                 <i class="bx bx-cog display-6"></i>
                             </span>
@@ -125,16 +102,11 @@
                                     <option value="email">Email</option>
                                     <option value="email_domain">Email Domain</option>
                                     <option value="phone">Phone</option>
-                                    <option value="aff_id">Aff ID</option>
+                                    <option value="state">State</option>
+                                    <option value="zip_code">Zip Code</option>
+                                    <option value="cake_id">Cake ID</option>
+                                    <option value="aff_id">Affiliate ID</option>
                                     <option value="sub_id">Sub ID</option>
-                                    <option value="journya">Journya</option>
-                                    <option value="cake_leadid">Cake LeadID</option>
-                                    <option value="optin_domain">Optin Domain</option>
-                                    <option value="domain_abt">Domain ABT</option>
-                                    <option value="trusted_form">Trusted Form</option>
-                                    <option value="ip_address">IP Address</option>
-                                    <option value="esp">ESP</option>
-                                    <option value="result">Result</option>
                                     <option value="offer_id">Offer ID</option>
                                 </select>
                             </div>
@@ -150,7 +122,6 @@
                                 <label class="mr-2">Start Date</label>
                                 <div class="position-relative flex-grow-1">
                                     <input type="date" id="start_date" class="form-control" placeholder="Select Start Date">
-                                    <!-- FontAwesome Cross Button -->
                                     <button type="button" id="clear_start_date" class="btn btn-link position-absolute" style="right: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #999; display: none;">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -161,7 +132,6 @@
                                 <label class="mr-2">End Date</label>
                                 <div class="position-relative flex-grow-1">
                                     <input type="date" id="end_date" class="form-control" placeholder="Select End Date">
-                                    <!-- FontAwesome Cross Button -->
                                     <button type="button" id="clear_end_date" class="btn btn-link position-absolute" style="right: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #999; display: none;">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -169,61 +139,19 @@
                                 <small class="text-danger" id="end_date_error" style="display: none;"></small>
                             </div>
                         </div>
-
-                        <!-- Amount Filters -->
-                        <div class="row mb-4">
-                            <div class="col-12 col-xxl-6 mb-xxl-0 mb-3">
-                                <div class="row" style="align-items: end;">
-                                    <div class="col-3 w-auto">
-                                    <label>Amount Type</label>
-                                    <select id="select_amount" class="form-control">
-                                    <option value="">Select Amount Type</option>
-                                    <option value="tax_debt_amount">Tax Debt Amount</option>
-                                    <option value="cc_debt_amount">CC Debt Amount</option>
-                                </select>
-                                    </div>
-                                    <div class="col-3 col-md-4 w-auto tax_debt_amount">
-                                        <select id="tax_debt_amount_operator" class="form-control">
-                                            <option value="">Select Operator</option>
-                                            <option value=">">&gt;</option>
-                                            <option value="=">=</option>
-                                            <option value="<">&lt;</option>
-                                        </select>
-                                    </div>
-                                    <div class="col tax_debt_amount_field w-auto tax_debt_amount" style="display: none; width: max-content">
-                                        <input type="number" id="tax_debt_amount" class="form-control" placeholder="Enter Amount">
-                                    </div>
-
-                                    <div class="col-3 col-md-4 w-auto CC_debt_amount">
-                                        <select id="cc_debt_amount_operator" class="form-control">
-                                            <option value="">Select Operator</option>
-                                            <option value=">">&gt;</option>
-                                            <option value="=">=</option>
-                                            <option value="<">&lt;</option>
-                                        </select>
-                                    </div>
-                                    <div class="col cc_debt_amount_field w-auto CC_debt_amount" style="display: none; width: max-content">
-                                        <input type="number" id="cc_debt_amount" class="form-control" placeholder="Enter Amount">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         <!-- ./Filter Section -->
                         <div class="mb-4">
                             <button id="filterBtn" class="btn btn-primary me-2">Apply Filters</button>
                             <button id="resetBtn" class="btn btn-secondary filter-reset-btn me-2">Reset Filters</button>
-                            <button id="openExportModelBtn" type="button" class="btn btn-primary me-2"> Export Leads</button>
-                            <button id="openDeleteTestLeadsModalBtn" type="button" class="btn btn-danger"> Delete Test Leads</button>
-                            <!-- <button id="exportCsv" class="btn btn-success">Export CSV</button>
-                            <button id="exportExcel" class="btn btn-info">Export Excel</button>
-                            <button id="exportPdf" class="btn btn-danger">Export PDF</button> -->
+                            <button id="openExportModelBtn" type="button" class="btn btn-primary me-2"> Export Contacts</button>
+                            <button id="openDeleteTestContactsModalBtn" type="button" class="btn btn-danger"> Delete Test Contacts</button>
                         </div>
                         <!-- ./All Filter Options -->
                     </div>
                 </div>
 
-                <!-- Leads Table -->
-                <table class="table table-bordered table-striped" id="leads-table" style="width: -webkit-fill-available;">
+                <!-- TRA Contacts Table -->
+                <table class="table table-bordered table-striped" id="tra-contacts-table" style="width: -webkit-fill-available;">
                     <thead>
                         <tr></tr>
                     </thead>
@@ -239,13 +167,71 @@
     </div>
     <!-- / Content -->
 
+    <!-- Extra Large Listing column Selection Modal -->
+    <div class="modal fade" id="tra-contacts-listing-column-selection-model" tabindex="-1">
+        <div class="modal-dialog modal-md" role="document">
+            <div class="modal-content">
+                <div class="modal-header border border-bottom-4 p-3">
+                    <h5 class="modal-title">TRA Lead Listing – Column Customization</h5>
+                    <button type="button" class="btn-close" id="btn-close-tra-contacts-listing-column-selection-model"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-12">
+                            <h5 class="mb-0">Choose & Reorder Columns</h5>
+                            <div id="container-listing-column-picker">
+                                <div class="column-picker text-center">
+                                    <div class="row mb-2">
+                                        <div class="col-md-5">
+                                            <h6 class="text-start ms-2">Available Columns</h6>
+                                            <select multiple id="available-columns" class="form-control column-selection-selects">
+                                            </select>
+                                        </div>
+
+                                        <div class="col-md-2 d-flex flex-column justify-content-start mt-5 gap-2">
+                                            <button class="btn btn-primary fs-5" id="add-selected">&rarr;</button>
+                                            <button class="btn btn-danger fs-5" id="remove-selected">&larr;</button>
+                                            <button class="btn btn-success fs-5" id="add-all">&rArr;</button>
+                                            <button class="btn btn-warning fs-5" id="remove-all">&lArr;</button>
+                                        </div>
+
+                                        <div class="col-md-5">
+                                            <h6 class="text-start ms-2">Selected Columns</h6>
+                                            <select multiple id="shown-columns" class="form-control sortable column-selection-selects">
+                                            </select>
+
+                                            <div class="mt-2 d-grid gap-2">
+                                                <button class="btn btn-secondary" id="move-up">↑ Move Up</button>
+                                                <button class="btn btn-secondary" id="move-down">↓ Move Down</button>
+                                                <button class="btn btn-secondary" id="move-top">⇡ Move to Top</button>
+                                                <button class="btn btn-secondary" id="move-bottom">⇣ Move to Bottom</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border border-top-2 p-3">
+                    <button type="button" class="btn btn-primary" id="customFielsSaveBtn">Update</button>
+                    <button type="button" class="btn btn-secondary" id="resetCustomFielsSaveBtn">Reset</button>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ./Extra Large Listing column Selection Modal -->
+
+
     <!-- Extra Large Modal -->
-    <div class="modal fade" id="export-leads-model" tabindex="-1">
+    <div class="modal fade" id="export-contacts-model" tabindex="-1">
         <div class="modal-dialog modal-xl" role="document">
-            <form id="form-export-lead-data">
+            <form id="form-export-contact-data">
                 <div class="modal-content">
                     <div class="modal-header border border-bottom-4 p-3">
-                        <h5 class="modal-title">Export Leads Data</h5>
+                        <h5 class="modal-title">Export TRA Lead Data</h5>
                         <button id="closeExportModelBtn" type="button" class="btn-close" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
@@ -253,22 +239,16 @@
                             <div class="col-6">
                                 <h6 class="mb-3">Choose What to Export:</h6>
                                 <div class="row mb-4">
-                                    <!-- <div class="col-6 w-auto">
-                                        <div class="form-check">
-                                            <input name="export_type" class="form-check-input" type="radio" value="export_all_data" id="export-all-data" checked>
-                                            <label class="form-check-label" for="export-all-data"> Export All Leads </label>
-                                        </div>
-                                    </div> -->
                                     <div class="col-6">
                                         <div class="form-check w-auto">
                                             <input name="export_type" class="form-check-input" type="radio" value="export_filtered_data" id="export-filtered-data" checked>
-                                            <label class="form-check-label" for="export-filtered-data"> Export Filtered Leads </label>
+                                            <label class="form-check-label" for="export-filtered-data"> Export Filtered Contacts </label>
                                         </div>
                                     </div>
                                     <span class="error-export export_type d-none error"></span>
                                 </div>
 
-                                <h6 class="mb-3 d-none">Export Frequency:</h6>
+                                <h6 class="mb-0 d-none">Export Frequency:</h6>
                                 <div class="row mb-3">
                                     <div class="col-6">
                                         <label for="export-frequency" class="form-label">How often should we export?</label>
@@ -337,7 +317,7 @@
                                     <div class="col-12">
                                         <div class="mb-3">
                                             <label for="export-title" class="form-label">Export Title (Optional)</label>
-                                            <input name="title" id="export-title" class="form-control" type="text" placeholder="e.g., Weekly Sales Leads Report">
+                                            <input name="title" id="export-title" class="form-control" type="text" placeholder="e.g., Weekly TRA Lead Report">
                                         </div>
                                     </div>
                                     <div class="col-12">
@@ -349,7 +329,7 @@
                                     <div class="col-12">
                                         <div class="mb-3">
                                             <label for="file-prefix" class="form-label">File Name Prefix (Optional)</label>
-                                            <input name="file_prefix" id="file-prefix" class="form-control" type="text" placeholder="e.g., sales_leads, customer_data">
+                                            <input name="file_prefix" id="file-prefix" class="form-control" type="text" placeholder="e.g., tra_contacts, tra_lead_data">
                                         </div>
                                     </div>
                                     <div class="col-12">
@@ -377,8 +357,8 @@
                                             <div class="col-md-5">
                                                 <h6 class="text-start ms-2">Available Columns</h6>
                                                 <select multiple id="available-columns" class="form-control column-selection-selects">
-                                                    @foreach(config('export_fields.AllContact') as $field)
-                                                        <option value="{{ $field }}">{{ getLeadKeyByValue($field) }}</option>
+                                                    @foreach(config('export_fields.TraContact') as $field)
+                                                        <option value="{{ $field }}">{{ ucfirst(str_replace('_', ' ', $field)) }}</option>
                                                     @endforeach
                                                 </select>
                                                 <span class="error-export export_columns d-none error"></span>
@@ -408,8 +388,8 @@
                                             <div class="col-6 w-auto">
                                                 <h6 class="mb-2 ms-2 text-start">Sort By:</h6>
                                                 <select class="form-control" value="created_at" name="sort_by_field_name">
-                                                    @foreach(config('export_fields.AllContact') as $field)
-                                                        <option value="{{ $field }}" {{ ($field == 'created_at') ? "selected" : "" }} >{{ $field }}</option>
+                                                    @foreach(config('export_fields.TraContact') as $field)
+                                                        <option value="{{ $field }}" {{ ($field == 'created_at') ? "selected" : "" }} >{{ ucfirst(str_replace('_', ' ', $field)) }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -421,7 +401,6 @@
                                                 </select>
                                             </div>
                                         </div>
-                                        <!-- <button id="apply-columns" class="btn btn-primary mt-3">Apply Selection</button> -->
                                     </div>
                                 </div>
                             </div>
@@ -430,7 +409,7 @@
 
                     <div class="modal-footer border border-top-2 p-3">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="btn-start-lead-export">Start Export</button>
+                        <button type="button" class="btn btn-primary" id="btn-start-contact-export">Start Export</button>
                     </div>
                 </div>
             <form>
@@ -438,112 +417,56 @@
     </div>
     <!-- ./Extra Large Modal -->
 
-    <!-- Delete Test Leads Modal -->
-    <div class="modal fade" id="delete-test-leads-model" tabindex="-1">
+    <!-- Delete Test Contacts Modal -->
+    <div class="modal fade" id="delete-test-contacts-model" tabindex="-1">
         <div class="modal-dialog modal-xl" role="document">
             <div class="modal-content">
                 <div class="modal-header border border-bottom-4 p-3">
-                    <h5 class="modal-title">Are you sure want to delete test leads?</h5>
-                    <button type="button" class="btn-close" id="closeDeleteTestLeadsModalBtn" aria-label="Close"></button>
+                    <h5 class="modal-title">Are you sure want to delete test contacts?</h5>
+                    <button type="button" class="btn-close" id="closeDeleteTestContactsModalBtn" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <span class="badge bg-success me-2">Total Count <span id="test-leads-total-count">0</span></span>
-                            <span class="badge bg-danger">Display Count <span id="test-leads-display-count">0</span></span>
+                            <span class="badge bg-success me-2">Total Count <span id="test-contacts-total-count">0</span></span>
+                            <span class="badge bg-danger">Display Count <span id="test-contacts-display-count">0</span></span>
                         </div>
                         <div class="col-md-6 text-end">
-                            <span class="badge bg-primary" id="test-leads-date-range"></span>
+                            <span class="badge bg-primary" id="test-contacts-date-range"></span>
                         </div>
                     </div>
                     <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-bordered table-striped" id="test-leads-table">
+                        <table class="table table-bordered table-striped" id="test-contacts-table">
                             <thead>
                                 <tr>
                                     <th>Id</th>
                                     <th>Name</th>
                                     <th>Email</th>
-                                    <th>Cake Id</th>
                                     <th>Phone</th>
+                                    <th>State</th>
+                                    <th>Cake ID</th>
                                     <th>Created At</th>
                                 </tr>
                             </thead>
-                            <tbody id="test-leads-table-body">
+                            <tbody id="test-contacts-table-body">
                                 <tr>
-                                    <td colspan="6" class="text-center">Loading...</td>
+                                    <td colspan="7" class="text-center">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="alert alert-info mt-3">
-                        <small>Displaying test lead data based on "ckmtest@gmail.com" & "ckmtestpixel@gmail.com" Emails. Use the 'Delete Confirm' button to remove selected entries. Please note that this action is permanent and cannot be undone.</small>
+                        <small>Displaying test contact data based on "ckmtest@gmail.com" & "ckmtestpixel@gmail.com" Emails. Use the 'Delete Confirm' button to remove selected entries. Please note that this action is permanent and cannot be undone.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" id="cancelDeleteTestLeadsBtn">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteTestLeadsBtn">Confirm</button>
+                    <button type="button" class="btn btn-secondary" id="cancelDeleteTestContactsBtn">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteTestContactsBtn">Confirm</button>
                 </div>
             </div>
         </div>
     </div>
-    <!-- ./Delete Test Leads Modal -->
-
-    <!-- Extra Large Listing column Selection Modal -->
-    <div class="modal fade" id="leads-listing-column-selection-model" tabindex="-1">
-        <div class="modal-dialog modal-md" role="document">
-            <div class="modal-content">
-                <div class="modal-header border border-bottom-4 p-3">
-                    <h5 class="modal-title">Lead Listing – Column Customization</h5>
-                    <button type="button" class="btn-close" id="btn-close-leads-listing-column-selection-model"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-12">
-                            <h5 class="mb-0">Choose & Reorder Columns</h5>
-                            <div id="container-listing-column-picker">
-                                <div class="column-picker text-center">
-                                    <div class="row mb-2">
-                                        <div class="col-md-5">
-                                            <h6 class="text-start ms-2">Available Columns</h6>
-                                            <select multiple id="available-columns" class="form-control column-selection-selects">
-                                            </select>
-                                        </div>
-
-                                        <div class="col-md-2 d-flex flex-column justify-content-start mt-5 gap-2">
-                                            <button class="btn btn-primary fs-5" id="add-selected">&rarr;</button>
-                                            <button class="btn btn-danger fs-5" id="remove-selected">&larr;</button>
-                                            <button class="btn btn-success fs-5" id="add-all">&rArr;</button>
-                                            <button class="btn btn-warning fs-5" id="remove-all">&lArr;</button>
-                                        </div>
-
-                                        <div class="col-md-5">
-                                            <h6 class="text-start ms-2">Selected Columns</h6>
-                                            <select multiple id="shown-columns" class="form-control sortable column-selection-selects">
-                                            </select>
-
-                                            <div class="mt-2 d-grid gap-2">
-                                                <button class="btn btn-secondary" id="move-up">↑ Move Up</button>
-                                                <button class="btn btn-secondary" id="move-down">↓ Move Down</button>
-                                                <button class="btn btn-secondary" id="move-top">⇡ Move to Top</button>
-                                                <button class="btn btn-secondary" id="move-bottom">⇣ Move to Bottom</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-footer border border-top-2 p-3">
-                    <button type="button" class="btn btn-primary" id="customFielsSaveBtn">Update</button>
-                    <button type="button" class="btn btn-secondary" id="resetCustomFielsSaveBtn">Reset</button>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- ./Extra Large Listing column Selection Modal -->
+    <!-- ./Delete Test Contacts Modal -->
 
     <!-- Footer -->
     @include('layout.footer')
@@ -559,8 +482,6 @@
 <script src="{{ asset('vendor/js/dataTables.bootstrap5.min.js') }}?v={{ currentVersion() }}"></script>
 <script type="text/javascript" src="{{ asset('vendor/js/moment.min.js') }}?v={{ currentVersion() }}"></script>
 <script type="text/javascript" src="{{ asset('vendor/js/moment-timezone-with-data.min.js') }}?v={{ currentVersion() }}"></script>
-<script type="text/javascript" src="{{ asset('vendor/js/daterangepicker.min.js') }}?v={{ currentVersion() }}"></script>
-<script type="text/javascript" src="{{ asset('vendor/js/select2.min.js') }}?v={{ currentVersion() }}"></script>
 <script src="{{ asset('vendor/js/jquery-ui.min.js') }}?v={{ currentVersion() }}"></script>
 <script>
     const appTimezone = @json(config('app.timezone'));
@@ -570,17 +491,17 @@
         var selectedFields = @json($selectedFields);
 
         $('.menu-item').removeClass('active');
-        $('.menu-item-leads').addClass('active');
+        $('.menu-item-tra-contacts').addClass('active');
 
         function updateAvailableColumns() {
             let $select = $('#container-listing-column-picker #available-columns');
-            $select.empty(); // Clear existing options
+            $select.empty();
 
             $.each(defaultFields, function(key, label) {
                 if (!selectedFields.includes(key)) {
                     $select.append($('<option>', {
-                        value: key, // Field key as value
-                        text: label // Field label as text
+                        value: key,
+                        text: label
                     }));
                 }
             });
@@ -588,12 +509,12 @@
 
         function updateShownColumns() {
             let $select = $('#container-listing-column-picker #shown-columns');
-            $select.empty(); // Clear existing options
+            $select.empty();
 
             $.each(selectedFields, function(index, field) {
                 $select.append($('<option>', {
-                    value: field, // Ensure `key` exists
-                    text: defaultFields[field] // Ensure `label` exists
+                    value: field,
+                    text: defaultFields[field]
                 }));
             });
         }
@@ -601,40 +522,19 @@
         updateAvailableColumns();
         updateShownColumns();
 
-        $("#tax_debt_amount_operator").change(function() {
-            if ($(this).val() === "") {
-                $('#tax_debt_amount').val("");
-                $('.tax_debt_amount_field').hide();
-            } else {
-                $('.tax_debt_amount_field').show();
-            }
-        });
-
-        $("#cc_debt_amount_operator").change(function() {
-            if ($(this).val() === "") {
-                $('#cc_debt_amount').val("");
-                $('.cc_debt_amount_field').hide();
-            } else {
-                $('.cc_debt_amount_field').show();
-            }
-        });
-
         // Date validation function
         function validateDates() {
             var startDate = $('#start_date').val();
             var endDate = $('#end_date').val();
             var isValid = true;
 
-            // Hide previous errors
             $('#start_date_error').hide().text('');
             $('#end_date_error').hide().text('');
 
-            // If both dates are empty, that's okay (no date filtering)
             if (!startDate && !endDate) {
                 return true;
             }
 
-            // If both dates are filled, validate that end date is not before start date
             if (startDate && endDate) {
                 var start = new Date(startDate);
                 var end = new Date(endDate);
@@ -648,7 +548,6 @@
             return isValid;
         }
 
-        // Validate dates on change
         $('#start_date, #end_date').on('change', function() {
             validateDates();
         });
@@ -666,7 +565,6 @@
             $('#clear_end_date').hide();
         });
 
-        // Show clear button when date is selected
         $('#start_date').on('change', function() {
             if ($(this).val()) {
                 $('#clear_start_date').show();
@@ -701,7 +599,7 @@
             {
                 data: 'email',
                 name: 'email',
-                title: 'Email Address',
+                title: 'Email',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
@@ -712,44 +610,65 @@
                 title: 'Phone',
                 render: function(data) {
                     if (!data) return 'N/A';
-                    // Remove all non-digit characters
                     var cleaned = data.replace(/\D/g, '');
-                    // Format as (XXX) XXX-XXXX if 10 digits
                     if (cleaned.length === 10) {
                         return '(' + cleaned.substring(0, 3) + ') ' + cleaned.substring(3, 6) + '-' + cleaned.substring(6);
                     }
-                    // Return original if not 10 digits
                     return data;
                 }
             },
             {
-                data: 'optin_domain',
-                name: 'optin_domain',
-                title: 'Opt in Domain',
+                data: 'page',
+                name: 'page',
+                title: 'Page',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
             {
-                data: 'result',
-                name: 'result',
-                title: 'Result',
+                data: 'tax_debt',
+                name: 'tax_debt',
+                title: 'Tax Debt',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
             {
-                data: 'journya',
-                name: 'journya',
-                title: 'Journya',
+                data: 'state',
+                name: 'state',
+                title: 'State',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
             {
-                data: 'cake_leadid',
-                name: 'cake_leadid',
-                title: 'Lead ID',
+                data: 'zip_code',
+                name: 'zip_code',
+                title: 'Zip Code',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            {
+                data: 'universal_leadid',
+                name: 'universal_leadid',
+                title: 'Universal Lead ID',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            {
+                data: 'aff_id',
+                name: 'aff_id',
+                title: 'Affiliate ID',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            {
+                data: 'cake_id',
+                name: 'cake_id',
+                title: 'Cake ID',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
@@ -757,7 +676,7 @@
             {
                 data: 'created_at',
                 name: 'created_at',
-                title: 'Created Date',
+                title: 'Created At',
                 render: function(data) {
                     return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
                         moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
@@ -782,44 +701,25 @@
                     return data ? data : 'N/A';
                 }
             },
+            "email_domain": {
+                data: 'email_domain',
+                name: 'email_domain',
+                title: 'Email Domain',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
             "phone": {
                 data: 'phone',
                 name: 'phone',
                 title: 'Phone',
                 render: function(data) {
                     if (!data) return 'N/A';
-                    // Remove all non-digit characters
                     var cleaned = data.replace(/\D/g, '');
-                    // Format as (XXX) XXX-XXXX if 10 digits
                     if (cleaned.length === 10) {
                         return '(' + cleaned.substring(0, 3) + ') ' + cleaned.substring(3, 6) + '-' + cleaned.substring(6);
                     }
-                    // Return original if not 10 digits
                     return data;
-                }
-            },
-            "alt_phone": {
-                data: 'alt_phone',
-                name: 'alt_phone',
-                title: 'Alternate Phone',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "address": {
-                data: 'address',
-                name: 'address',
-                title: 'Address',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "city": {
-                data: 'city',
-                name: 'city',
-                title: 'City',
-                render: function(data) {
-                    return data ? data : 'N/A';
                 }
             },
             "state": {
@@ -830,196 +730,18 @@
                     return data ? data : 'N/A';
                 }
             },
-            "postal": {
-                data: 'postal',
-                name: 'postal',
-                title: 'Postal Code',
+            "zip_code": {
+                data: 'zip_code',
+                name: 'zip_code',
+                title: 'Zip Code',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
-            "country": {
-                data: 'country',
-                name: 'country',
-                title: 'Country',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "ip": {
-                data: 'ip',
-                name: 'ip',
-                title: 'IP Address',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "created_at": {
-                data: 'created_at',
-                name: 'created_at',
-                title: 'Created Date',
-                render: function(data) {
-                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
-                        moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
-                }
-            },
-            "gender": {
-                data: 'gender',
-                name: 'gender',
-                title: 'Gender',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "offer_url": {
-                data: 'offer_url',
-                name: 'offer_url',
-                title: 'Offer URL',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "dob": {
-                data: 'dob',
-                name: 'dob',
-                title: 'Date of Birth',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "tax_debt_amount": {
-                data: 'tax_debt_amount',
-                name: 'tax_debt_amount',
-                title: 'Tax Debt Amount',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "cc_debt_amount": {
-                data: 'cc_debt_amount',
-                name: 'cc_debt_amount',
-                title: 'Credit Card Debt Amount',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "type_of_debt": {
-                data: 'type_of_debt',
-                name: 'type_of_debt',
-                title: 'Type of Debt',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "home_owner": {
-                data: 'home_owner',
-                name: 'home_owner',
-                title: 'Home Owner',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "created_at": {
-                data: 'created_at',
-                name: 'created_at',
-                title: 'Created Date',
-                render: function(data) {
-                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
-                        moment.tz(data, appTimezone).format('DD MMM YYYY, hh:mm A');
-                }
-            },
-            "journya": {
-                data: 'journya',
-                name: 'journya',
-                title: 'Journya',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "phone_type": {
-                data: 'phone_type',
-                name: 'phone_type',
-                title: 'Phone Type',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "trusted_form": {
-                data: 'trusted_form',
-                name: 'trusted_form',
-                title: 'Trusted Form ID',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "opt_in": {
-                data: 'opt_in',
-                name: 'opt_in',
-                title: 'Opt-in',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "sub_id_1": {
-                data: 'sub_id_1',
-                name: 'sub_id_1',
-                title: 'Sub ID 1',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "sub_id_2": {
-                data: 'sub_id_2',
-                name: 'sub_id_2',
-                title: 'Sub ID 2',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "sub_id_3": {
-                data: 'sub_id_3',
-                name: 'sub_id_3',
-                title: 'Sub ID 3',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "sub_id_4": {
-                data: 'sub_id_4',
-                name: 'sub_id_4',
-                title: 'Sub ID 4',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "sub_id_5": {
-                data: 'sub_id_5',
-                name: 'sub_id_5',
-                title: 'Sub ID 5',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "aff_id_1": {
-                data: 'aff_id_1',
-                name: 'aff_id_1',
-                title: 'Affiliate ID 1',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "aff_id_2": {
-                data: 'aff_id_2',
-                name: 'aff_id_2',
-                title: 'Affiliate ID 2',
-                render: function(data) {
-                    return data ? data : 'N/A';
-                }
-            },
-            "cake_leadid": {
-                data: 'cake_leadid',
-                name: 'cake_leadid',
-                title: 'Cake Lead ID',
+            "page": {
+                data: 'page',
+                name: 'page',
+                title: 'Page',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
@@ -1027,25 +749,108 @@
             "optin_domain": {
                 data: 'optin_domain',
                 name: 'optin_domain',
-                title: 'Opt in Domain',
+                title: 'Optin Domain',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
-            "result": {
-                data: 'result',
-                name: 'result',
-                title: 'Result',
+            "universal_leadid": {
+                data: 'universal_leadid',
+                name: 'universal_leadid',
+                title: 'Universal Lead ID',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
-            "page_url": {
-                data: 'page_url',
-                name: 'page_url',
-                title: 'Page URL',
+            "cake_id": {
+                data: 'cake_id',
+                name: 'cake_id',
+                title: 'Cake ID',
                 render: function(data) {
                     return data ? data : 'N/A';
+                }
+            },
+            "ckm_campaign_id": {
+                data: 'ckm_campaign_id',
+                name: 'ckm_campaign_id',
+                title: 'CKM Campaign ID',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "ckm_key": {
+                data: 'ckm_key',
+                name: 'ckm_key',
+                title: 'CKM Key',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "tax_debt": {
+                data: 'tax_debt',
+                name: 'tax_debt',
+                title: 'Tax Debt',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "aff_id": {
+                data: 'aff_id',
+                name: 'aff_id',
+                title: 'Affiliate ID',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "sub_id": {
+                data: 'sub_id',
+                name: 'sub_id',
+                title: 'Sub ID',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "ip_address": {
+                data: 'ip_address',
+                name: 'ip_address',
+                title: 'IP Address',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "offer_id": {
+                data: 'offer_id',
+                name: 'offer_id',
+                title: 'Offer ID',
+                render: function(data) {
+                    return data ? data : 'N/A';
+                }
+            },
+            "lead_time_stamp": {
+                data: 'lead_time_stamp',
+                name: 'lead_time_stamp',
+                title: 'Lead Time Stamp',
+                render: function(data) {
+                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
+                        moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
+                }
+            },
+            "created_at": {
+                data: 'created_at',
+                name: 'created_at',
+                title: 'Created At',
+                render: function(data) {
+                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
+                        moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
+                }
+            },
+            "updated_at": {
+                data: 'updated_at',
+                name: 'updated_at',
+                title: 'Updated At',
+                render: function(data) {
+                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
+                        moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
                 }
             }
         };
@@ -1064,12 +869,11 @@
                 orderable: false,
                 searchable: false,
                 render: function(data, type, row, meta) {
-                    var pageInfo = $('#leads-table').DataTable().page.info();
-                    return pageInfo.start + meta.row + 1; // Correct Sr. No based on pagination
+                    var pageInfo = $('#tra-contacts-table').DataTable().page.info();
+                    return pageInfo.start + meta.row + 1;
                 }
             });
 
-            // Ensure the 'ID' column is always the first element
             if (selectedColumns.length && selectedColumns[0].name !== 'id') {
                 selectedColumns.unshift({
                     data: 'id',
@@ -1091,54 +895,50 @@
                 });
             }
 
-            if ($.fn.DataTable.isDataTable('#leads-table')) {
-                $('#leads-table').DataTable().clear().destroy();
-                $('#leads-table thead').empty();
+            if ($.fn.DataTable.isDataTable('#tra-contacts-table')) {
+                $('#tra-contacts-table').DataTable().clear().destroy();
+                $('#tra-contacts-table thead').empty();
             }
 
-            // Add table headers dynamically
             var thead = '<tr>';
             selectedColumns.forEach(col => {
                 thead += `<th>${col.title}</th>`;
             });
             thead += '</tr>';
-            $('#leads-table thead').html(thead);
+            $('#consumer-insite-contacts-table thead').html(thead);
 
-            // Reinitialize DataTable
-            table = $('#leads-table').DataTable({
+            // Find the index of created_at column for ordering
+            var createdAtIndex = selectedColumns.findIndex(col => col.data === 'created_at' || col.name === 'created_at');
+            // If created_at column not found, default to first column (ID)
+            var orderColumnIndex = createdAtIndex >= 0 ? createdAtIndex : 0;
+
+            table = $('#tra-contacts-table').DataTable({
                 processing: true,
                 serverSide: true,
                 searching: false,
-                scrollY: "600px", // Enables vertical scrolling with increased height
-                scrollX: true, // Enables horizontal scrolling for wide tables
-                scrollCollapse: true, // Ensures the table fits inside the scroll container
-                fixedHeader: true, // Keeps the header aligned when scrolling
-                autoWidth: false, // Prevents column width distortion
-                pageLength: 50, // Default to 50 entries per page for better UX
+                scrollY: "600px",
+                scrollX: true,
+                scrollCollapse: true,
+                fixedHeader: true,
+                autoWidth: false,
+                pageLength: 50,
                 lengthMenu: [
-                    [25, 50, 100, 200, 500], // Values for page length
-                    [25, 50, 100, 200, 500]  // Labels shown in dropdown
+                    [25, 50, 100, 200, 500],
+                    [25, 50, 100, 200, 500]
                 ],
-                order: [[0, 'desc']],
+                order: [[orderColumnIndex, 'desc']],
                 ajax: {
-                    url: "{{ route('leads.index') }}",
+                    url: "{{ route('tra-contacts.index') }}",
                     data: function(d) {
                         d.filter_column = $('#filter_column').val() || '';
                         d.search_value = $('#search_value').val() || '';
-                        d.campaign_list_id = $('#campaign_list_id').val() || '';
 
-                        // Validate dates before sending
                         if (!validateDates()) {
-                            return; // Don't send request if validation fails
+                            return;
                         }
 
                         d.start_date = $('#start_date').val() || '';
                         d.end_date = $('#end_date').val() || '';
-
-                        d.tax_debt_amount_operator = $('#tax_debt_amount_operator').val() || '';
-                        d.tax_debt_amount = $('#tax_debt_amount').val() || '';
-                        d.cc_debt_amount_operator = $('#cc_debt_amount_operator').val() || '';
-                        d.cc_debt_amount = $('#cc_debt_amount').val() || '';
                     }
                 },
                 columns: selectedColumns
@@ -1157,7 +957,7 @@
 
             $('#preloader').show();
             $.ajax({
-                url: "{{ route('save.lead.field.setting') }}", // Backend route
+                url: "{{ route('save.tra-contact.field.setting') }}",
                 type: "POST",
                 data: JSON.stringify({
                     fields: selected_fields
@@ -1171,8 +971,8 @@
                     selectedFields = selected_fields;
                     toastr.success("Fields setting saved successfully!");
                     setTimeout(() => {
-                        hideLeadsListingColumnSelectionModal();
-                        initializeDataTable(selectedFields); // Reinitialize table with new fields
+                        hideTraContactsListingColumnSelectionModal();
+                        initializeDataTable(selectedFields);
                         updateAvailableColumns();
                         updateShownColumns();
                     }, 500);
@@ -1188,7 +988,7 @@
         $("#resetCustomFielsSaveBtn").click(function() {
             $('#preloader').show();
             $.ajax({
-                url: "{{ route('reset.lead.field.setting') }}", // Backend route
+                url: "{{ route('reset.tra-contact.field.setting') }}",
                 type: "get",
                 contentType: "application/json",
                 headers: {
@@ -1199,8 +999,8 @@
                     toastr.success("Fields setting reset successfully!");
                     selectedFields = [];
                     setTimeout(() => {
-                        hideLeadsListingColumnSelectionModal();
-                        initializeDataTable(selectedFields); // Reinitialize table with new fields
+                        hideTraContactsListingColumnSelectionModal();
+                        initializeDataTable(selectedFields);
                         updateAvailableColumns();
                         updateShownColumns();
                     }, 500);
@@ -1215,7 +1015,6 @@
 
         // Apply Filters
         $('#filterBtn').click(function () {
-            // Validate dates before applying filter
             if (!validateDates()) {
                 return false;
             }
@@ -1226,196 +1025,27 @@
         $('.filter-reset-btn').click(function () {
             $('#filter_column').val('');
             $('#search_value').val('');
-            $('#select_amount').val('');
-            $('#campaign_list_id').val(null).trigger('change'); // Reset Select2
             $('#start_date, #end_date').val('');
             $('#start_date_error, #end_date_error').hide();
             $('#clear_start_date, #clear_end_date').hide();
-
-
-            $("#tax_debt_amount_operator, #tax_debt_amount, #cc_debt_amount_operator, #cc_debt_amount").val("")
-            $('.CC_debt_amount, .tax_debt_amount').hide();
-            table.order([[0, 'desc']]).draw();
+            // Find created_at column index for ordering
+            var orderColumnIndex = 0;
+            table.columns().every(function(index) {
+                if (this.dataSrc() === 'created_at') {
+                    orderColumnIndex = index;
+                    return false; // break
+                }
+            });
+            table.order([[orderColumnIndex, 'desc']]).draw();
         });
 
-        // Trigger search on input change
-        //  $('#search_value').on('keyup', function () {
-        //     table.ajax.reload(); // Refresh table when typing in search box
-        // });
-
-
         $(".content-wrapper #collapseExample").on("shown.bs.collapse", function () {
-            $('#campaign_list_id').select2({
-                placeholder: "Select List Id",
-                allowClear: true,
-                width: '100%' // Ensure full width usage
-            });
             $("#toggle-filter-button").text("Hide Filter Options");
         });
 
         $(".content-wrapper #collapseExample").on("hidden.bs.collapse", function () {
             $("#toggle-filter-button").text("View Filter Options");
         });
-
-        function updatePlaceholder(selector, placeholderText) {
-            var selected = $(selector).val();
-            if (!selected || selected.length === 0) {
-                $(selector).next('.select2-container').find('.select2-selection__rendered')
-                    .html('<span class="select2-selection__placeholder">' + placeholderText + '</span>');
-            }
-        }
-
-        updatePlaceholder('#campaign_list_id', 'Select List Id');
-
-        $('#campaign_list_id').on('change', function() {
-            updatePlaceholder('#campaign_list_id', 'Select List Id');
-        });
-
-        //
-        // Prevent form submission on page load
-        $("#form-export-lead-data").on("submit", function (e) {
-            e.preventDefault(); // Stops the form from submitting
-        });
-
-        function toggleFrequencyOptions() {
-            let frequency = $("#export-frequency").val();
-
-            $(".frequency-option").hide(); // Hide all frequency-related options first
-            updateNote(""); // Reset note initially
-
-            if (frequency === "weekly") {
-                $("#day-of-week-container").show();
-                updateNote("If the selected day does not occur in the current week, it will be scheduled for the next available occurrence.");
-            } else if (frequency === "monthly") {
-                $("#day-of-month-container").show();
-                updateNote("If the selected date (e.g., 31st) does not exist in a month, the export will run on the last valid day of that month.");
-            }
-
-            if (frequency === "one_time") {
-                $("#time-container").hide();
-            } else {
-                $("#time-container").show();
-            }
-        }
-
-        function updateNote(message) {
-            if (message) {
-                $("#export-note-message").text(message);
-                $("#export-note").removeClass("d-none");
-            } else {
-                $("#export-note").addClass("d-none");
-            }
-        }
-
-        // Initialize Bootstrap Tooltip
-        $('[data-bs-toggle="tooltip"]').tooltip();
-
-        function resetExportForm() {
-            // Reset the entire form
-            $("#form-export-lead-data")[0].reset();
-
-            // Restore Available Columns to original options
-            let availableColumns = $("#available-columns");
-            availableColumns.empty(); // Clear existing options
-
-            @foreach(config('export_fields.AllContact') as $field)
-                availableColumns.append(new Option("{{ $field }}", "{{ $field }}"));
-            @endforeach
-
-            // Clear Selected Columns
-            $("#shown-columns").empty();
-
-            // Hide error messages
-            $(".error-export").addClass("d-none").text("");
-        }
-
-        function showExportLeadsModal() {
-            $('#export-leads-model').modal('show');
-            // Attach event handler for frequency dropdown (use "on" to avoid rebinding)
-            $("#export-frequency").off("change").on("change", toggleFrequencyOptions);
-        }
-
-        function hideExportLeadsModal() {
-            $('#export-leads-model').modal('hide');
-            resetExportForm()
-        }
-
-        $(document).on('click', '#openExportModelBtn', function() {
-            showExportLeadsModal();
-        });
-
-        $(document).on('click', '#closeExportModelBtn', function() {
-            hideExportLeadsModal();
-        });
-
-        // // Event: When modal opens, set up change event for export frequency
-        // $('#export-leads-model').on('shown.bs.modal', function () {
-        //     console.log("Export Leads modal opened!"); // Debugging log
-
-        //     // Attach event handler for frequency dropdown (use "on" to avoid rebinding)
-        //     $("#export-frequency").off("change").on("change", toggleFrequencyOptions);
-        // });
-
-        // Handle Day of Month selection (for months without 30/31)
-        $("#export-option-day-of-month").change(function () {
-            let selectedDay = parseInt($(this).val());
-            if (selectedDay > 28) {
-                updateNote("Note: If this day doesn’t exist in a month (e.g., 30th or 31st in February), the export will run on the last valid day of that month.");
-            }
-        });
-
-        $("#day-of-week-container, #day-of-month-container, #time-container").hide()
-
-        // Helper Functions
-        function moveSelected(from, to) {
-            $(from + ' option:selected').appendTo(to);
-        }
-
-        function moveAll(from, to) {
-            $(from + ' option').appendTo(to);
-        }
-
-        // Export Leads Sortable Column Start
-        $("#container-export-column-picker #shown-columns").sortable({
-            update: function(event, ui) {
-                logColumnOrder();
-            }
-        }).disableSelection();
-
-        // Move selected items between lists
-        $('#container-export-column-picker #add-selected').click(function() { moveSelected('#container-export-column-picker #available-columns', '#container-export-column-picker #shown-columns'); });
-        $('#container-export-column-picker #remove-selected').click(function() { moveSelected('#container-export-column-picker #shown-columns', '#container-export-column-picker #available-columns'); });
-        $('#container-export-column-picker #add-all').click(function() { moveAll('#container-export-column-picker #available-columns', '#container-export-column-picker #shown-columns'); });
-        $('#container-export-column-picker #remove-all').click(function() { moveAll('#container-export-column-picker #shown-columns', '#container-export-column-picker #available-columns'); });
-
-        // Reordering Functions
-        $('#container-export-column-picker #move-up').click(function() { moveOption(-1); });
-        $('#container-export-column-picker #move-down').click(function() { moveOption(1); });
-        $('#container-export-column-picker #move-top').click(function() { moveOptionToEnd(false); });
-        $('#container-export-column-picker #move-bottom').click(function() { moveOptionToEnd(true); });
-
-        function moveOption(direction) {
-            let selected = $('#container-export-column-picker #shown-columns option:selected');
-            if (direction === -1) {
-                selected.first().prev().before(selected);
-            } else {
-                selected.last().next().after(selected);
-            }
-        }
-
-        function moveOptionToEnd(toBottom) {
-            let selected = $('#container-export-column-picker #shown-columns option:selected');
-            if (toBottom) {
-                $('#container-export-column-picker #shown-columns').append(selected);
-            } else {
-                $('#container-export-column-picker #shown-columns').prepend(selected);
-            }
-        }
-
-        function getExportColumnOrder() {
-            return $('#container-export-column-picker #shown-columns option').map(function() { return $(this).val(); }).get();
-        }
-        // end Export Leads Sortable Column
 
         // Leads listing Sortable Column Start
         $("#container-listing-column-picker #shown-columns").sortable({
@@ -1457,54 +1087,175 @@
         function getListingColumnOrder() {
             return $('#container-listing-column-picker #shown-columns option').map(function() { return $(this).val(); }).get();
         }
-        // end Leads listing Sortable Column
 
+        function moveSelected(from, to) {
+            $(from + ' option:selected').appendTo(to);
+        }
 
-        // Handle button click for export
-        $("#btn-start-lead-export").on("click", function () {
+        function moveAll(from, to) {
+            $(from + ' option').appendTo(to);
+        }
+
+        function logColumnOrder() {
+            // Optional: log the order for debugging
+        }
+
+        function showTraContactsListingColumnSelectionModal() {
+            $('#tra-contacts-listing-column-selection-model').modal('show');
+        }
+
+        function hideTraContactsListingColumnSelectionModal() {
+            $('#tra-contacts-listing-column-selection-model').modal('hide');
+            $("#column-customisation-settings").removeClass('setting-on').addClass('setting-off');
+        }
+
+        $('#column-customisation-settings').click(function() {
+            if ($(this).hasClass('setting-off')) {
+                $(this).removeClass('setting-off').addClass('setting-on');
+                showTraContactsListingColumnSelectionModal();
+            } else {
+                $(this).removeClass('setting-on').addClass('setting-off');
+                hideTraContactsListingColumnSelectionModal();
+            }
+        });
+
+        $(document).on('click', '#btn-close-tra-contacts-listing-column-selection-model', hideTraContactsListingColumnSelectionModal);
+
+        // Export Contacts Modal Functions
+        function resetExportForm() {
+            $("#form-export-contact-data")[0].reset();
+
+            let availableColumns = $("#container-export-column-picker #available-columns");
+            availableColumns.empty();
+
+            @foreach(config('export_fields.TraContact') as $field)
+                availableColumns.append(new Option("{{ ucfirst(str_replace('_', ' ', $field)) }}", "{{ $field }}"));
+            @endforeach
+
+            $("#container-export-column-picker #shown-columns").empty();
+            $(".error-export").addClass("d-none").text("");
+        }
+
+        function showExportContactsModal() {
+            $('#export-contacts-model').modal('show');
+            $("#export-frequency").off("change").on("change", toggleFrequencyOptions);
+        }
+
+        function hideExportContactsModal() {
+            $('#export-contacts-model').modal('hide');
+            resetExportForm();
+        }
+
+        function toggleFrequencyOptions() {
+            let frequency = $("#export-frequency").val();
+            $(".frequency-option").hide();
+            updateNote("");
+
+            if (frequency === "weekly") {
+                $("#day-of-week-container").show();
+                updateNote("If the selected day does not occur in the current week, it will be scheduled for the next available occurrence.");
+            } else if (frequency === "monthly") {
+                $("#day-of-month-container").show();
+                updateNote("If the selected date (e.g., 31st) does not exist in a month, the export will run on the last valid day of that month.");
+            }
+
+            if (frequency === "one_time") {
+                $("#time-container").hide();
+            } else {
+                $("#time-container").show();
+            }
+        }
+
+        function updateNote(message) {
+            if (message) {
+                $("#export-note-message").text(message);
+                $("#export-note").removeClass("d-none");
+            } else {
+                $("#export-note").addClass("d-none");
+            }
+        }
+
+        $(document).on('click', '#openExportModelBtn', function() {
+            showExportContactsModal();
+        });
+
+        $(document).on('click', '#closeExportModelBtn', function() {
+            hideExportContactsModal();
+        });
+
+        $("#day-of-week-container, #day-of-month-container, #time-container").hide();
+
+        // Export Contacts Sortable Column Start
+        $("#container-export-column-picker #shown-columns").sortable({
+            update: function(event, ui) {
+                logColumnOrder();
+            }
+        }).disableSelection();
+
+        $('#container-export-column-picker #add-selected').click(function() { moveSelected('#container-export-column-picker #available-columns', '#container-export-column-picker #shown-columns'); });
+        $('#container-export-column-picker #remove-selected').click(function() { moveSelected('#container-export-column-picker #shown-columns', '#container-export-column-picker #available-columns'); });
+        $('#container-export-column-picker #add-all').click(function() { moveAll('#container-export-column-picker #available-columns', '#container-export-column-picker #shown-columns'); });
+        $('#container-export-column-picker #remove-all').click(function() { moveAll('#container-export-column-picker #shown-columns', '#container-export-column-picker #available-columns'); });
+
+        $('#container-export-column-picker #move-up').click(function() { moveOptionExport(-1); });
+        $('#container-export-column-picker #move-down').click(function() { moveOptionExport(1); });
+        $('#container-export-column-picker #move-top').click(function() { moveOptionToEndExport(false); });
+        $('#container-export-column-picker #move-bottom').click(function() { moveOptionToEndExport(true); });
+
+        function moveOptionExport(direction) {
+            let selected = $('#container-export-column-picker #shown-columns option:selected');
+            if (direction === -1) {
+                selected.first().prev().before(selected);
+            } else {
+                selected.last().next().after(selected);
+            }
+        }
+
+        function moveOptionToEndExport(toBottom) {
+            let selected = $('#container-export-column-picker #shown-columns option:selected');
+            if (toBottom) {
+                $('#container-export-column-picker #shown-columns').append(selected);
+            } else {
+                $('#container-export-column-picker #shown-columns').prepend(selected);
+            }
+        }
+
+        function getExportColumnOrder() {
+            return $('#container-export-column-picker #shown-columns option').map(function() { return $(this).val(); }).get();
+        }
+
+        $("#form-export-contact-data").on("submit", function (e) {
+            e.preventDefault();
+        });
+
+        $("#btn-start-contact-export").on("click", function () {
             $('.error-export').addClass('d-none');
-            let formDataArray = $("#form-export-lead-data").serializeArray(); // Get form data as an array
+            let formDataArray = $("#form-export-contact-data").serializeArray();
             const selectedExportColumns = getExportColumnOrder();
-            // const errorMessageElement = $("#form-export-lead-data .error-export-column-selection");
 
-            // errorMessageElement
-            //     .text(selectedExportColumns.length ? '' : 'Please select columns for export')
-            //     .toggleClass('d-none', selectedExportColumns.length > 0);
-            // if (!selectedExportColumns.length) {
-            //     return false;
-            // }
-
-
-            // Convert form data to a key-value object
             let formDataObject = {};
             $.each(formDataArray, function (i, field) {
                 formDataObject[field.name] = field.value;
             });
 
-            // Collect selected export formats
             let selectedFormats = [];
             $("input[name='export_formats[]']:checked").each(function () {
                 selectedFormats.push($(this).val());
             });
 
             delete(formDataObject['export_formats[]']);
-
             formDataObject['export_formats'] = selectedFormats;
 
-            let export_type = $("#form-export-lead-data input[name='export_type']:checked").val();
+            let export_type = $("#form-export-contact-data input[name='export_type']:checked").val();
             if (export_type == "export_filtered_data") {
-                // Handle Other Filter values
                 let filter_column = $('#filter_column').val();
                 let search_value = $('#search_value').val();
-                let campaign_list_ids = $('#campaign_list_id').val();
 
-                // Validate dates before export
                 if (!validateDates()) {
                     alert('Please fix the date validation errors before exporting.');
                     return false;
                 }
 
-                // Handle start and end date
                 let start_date = $('#start_date').val() || '';
                 let end_date = $('#end_date').val() || '';
 
@@ -1518,40 +1269,11 @@
                     filter_data_params['search_value'] = search_value;
                 }
 
-                if (campaign_list_ids && Array.isArray(campaign_list_ids) && campaign_list_ids.length) {
-                    filter_data_params['campaign_list_id'] = campaign_list_ids;
-                }
-
-                // Date range filter - supports partial dates
                 if (start_date || end_date) {
                     filter_data_params['date_range'] = {
                         from: start_date || null,
                         to: end_date || null
                     };
-                }
-
-                if ($("#select_amount").val()) {
-                    if (($("#select_amount").val() == 'tax_debt_amount') && $('#tax_debt_amount_operator').val() && $('#tax_debt_amount').val()) {
-                        let tax_debt_amount_operator = $('#tax_debt_amount_operator').val();
-                        let tax_debt_amount_value = $('#tax_debt_amount').val();
-
-                        if (tax_debt_amount_operator && tax_debt_amount_value) {
-                            filter_data_params['tax_debt_amount'] = {
-                                operator: tax_debt_amount_operator,
-                                value: tax_debt_amount_value
-                            }
-                        }
-                    } else if (($("#select_amount").val() == 'cc_debt_amount') && $('#cc_debt_amount_operator').val() && $('#cc_debt_amount').val()) {
-                        let cc_debt_amount_operator = $('#cc_debt_amount_operator').val();
-                        let cc_debt_amount_value = $('#cc_debt_amount').val();
-
-                        if (cc_debt_amount_operator && cc_debt_amount_value) {
-                            filter_data_params['cc_debt_amount'] = {
-                                operator: cc_debt_amount_operator,
-                                value: cc_debt_amount_value
-                            }
-                        }
-                    }
                 }
                 formDataObject.filters = filter_data_params;
             }
@@ -1560,49 +1282,43 @@
 
             $('#preloader').show();
             $.ajax({
-                url: "{{ route('leads.export') }}", // Laravel named route
+                url: "{{ route('tra-contacts.export') }}",
                 type: "POST",
-                contentType: "application/json", // Ensure JSON request
-                dataType: "json", // Expect JSON response
+                contentType: "application/json",
+                dataType: "json",
                 data: JSON.stringify({
-                    schedule_lead_export_data: formDataObject // Convert data to JSON
+                    schedule_contact_export_data: formDataObject
                 }),
                 headers: {
-                    "X-CSRF-TOKEN": "{{ csrf_token() }}" // CSRF token for security
+                    "X-CSRF-TOKEN": "{{ csrf_token() }}"
                 },
                 success: function(response) {
                     $('#preloader').hide();
 
-                    // Check if this is an instant export with files
                     if (response.instant_export && response.files && response.files.length > 0) {
-                        // Show success message
                         toastr.success(response.message);
 
-                        // Download all files automatically without confirmation
                         response.files.forEach(function(file, index) {
                             setTimeout(function() {
-                                // Create a hidden iframe for download to avoid popup blockers
                                 const iframe = document.createElement('iframe');
                                 iframe.style.display = 'none';
                                 iframe.src = file.download_url;
                                 document.body.appendChild(iframe);
 
-                                // Remove iframe after download starts
                                 setTimeout(function() {
                                     document.body.removeChild(iframe);
                                 }, 2000);
-                            }, index * 1000); // 1 second delay between each download to ensure files are ready
+                            }, index * 1000);
                         });
 
                         setTimeout(() => {
-                            hideExportLeadsModal();
+                            hideExportContactsModal();
                         }, 1000);
                     } else {
-                        // Regular scheduled export
-                    toastr.success(response.message);
-                    setTimeout(() => {
-                        hideExportLeadsModal();
-                    }, 500);
+                        toastr.success(response.message);
+                        setTimeout(() => {
+                            hideExportContactsModal();
+                        }, 500);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -1610,42 +1326,16 @@
                     const server_error_message = xhr?.responseJSON?.message || 'Something went wrong';
                     const server_errors = xhr?.responseJSON?.errors || {};
 
-                    console.log("server_error_message:", server_error_message);
-                    console.log("server_errors:", server_errors);
-
-                    // Loop through errors and display them in corresponding elements
                     $.each(server_errors, function(field, messages) {
-                        const errorElement = $(`.error-export.${field}`); // Select by field class
+                        const errorElement = $(`.error-export.${field}`);
                         if (errorElement.length) {
-                            errorElement.removeClass("d-none").text(messages[0]); // Show first error message
+                            errorElement.removeClass("d-none").text(messages[0]);
                         }
                     });
                     toastr.error(server_error_message);
                 }
             });
         });
-
-        function showLeadsListingColumnSelectionModal() {
-            $('#leads-listing-column-selection-model').modal('show');
-        }
-
-        function hideLeadsListingColumnSelectionModal() {
-            $('#leads-listing-column-selection-model').modal('hide');
-            $("#column-customisation-settings").removeClass('setting-on').addClass('setting-off');
-        }
-
-        $('#column-customisation-settings').click(function() {
-            if ($(this).hasClass('setting-off')) {
-                $(this).removeClass('setting-off').addClass('setting-on');
-
-                showLeadsListingColumnSelectionModal();
-            } else {
-                $(this).removeClass('setting-on').addClass('setting-off');
-                hideLeadsListingColumnSelectionModal();
-            }
-        });
-
-        $(document).on('click', '#btn-close-leads-listing-column-selection-model', hideLeadsListingColumnSelectionModal);
 
         $('#export-in-batches').change(function () {
             const noteText = this.checked
@@ -1654,106 +1344,67 @@
 
             $('#export-in-batch-note').text(noteText);
         });
-    });
 
-    document.addEventListener("DOMContentLoaded", function () {
-    // Hide both fields initially
-        document.querySelectorAll(".tax_debt_amount, .CC_debt_amount").forEach(el => el.style.display = "none");
-
-        document.getElementById("select_amount").addEventListener("change", function () {
-            let selectedValue = this.options[this.selectedIndex].text;
-
-            $('#tax_debt_amount_operator').val('');
-            $('#tax_debt_amount').val('');
-            $('#cc_debt_amount_operator').val('');
-            $('#cc_debt_amount').val('');
-
-            // Hide both fields initially
-            document.querySelectorAll(".tax_debt_amount, .CC_debt_amount").forEach(el => el.style.display = "none");
-
-            if (selectedValue === "Tax Debt Amount") {
-                document.querySelectorAll(".tax_debt_amount").forEach(el => el.style.display = "block");
-            } else if (selectedValue === "CC Debt Amount") {
-                document.querySelectorAll(".CC_debt_amount").forEach(el => el.style.display = "block");
-            }
-        });
-
-
-        const inputField = document.getElementById('file-prefix');
-        inputField.addEventListener('input', function() {
-            let inputValue = this.value;
-            const sanitizedValue = inputValue.replace(/[^a-zA-Z0-9_-]/g, '');
-            const hasSpecialChars = inputValue !== sanitizedValue;
-
-            if (hasSpecialChars) {
-            toastr.warning('Special characters (except - and _) are not allowed.');
-            this.value = sanitizedValue;
-            }
-
-            this.value = this.value.replace(/\s+/g, '');
-        });
-
-        // Delete Test Leads Modal Functions
-        function loadTestLeads() {
-            $('#test-leads-table-body').html('<tr><td colspan="6" class="text-center">Loading...</td></tr>');
+        // Delete Test Contacts Modal Functions
+        function loadTestContacts() {
+            $('#test-contacts-table-body').html('<tr><td colspan="6" class="text-center">Loading...</td></tr>');
 
             $.ajax({
-                url: '{{ route("leads.test-leads.get") }}',
+                url: '{{ route("tra-contacts.test-contacts.get") }}',
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        // Update counts and date range
-                        $('#test-leads-total-count').text(response.total_count);
-                        $('#test-leads-display-count').text(response.display_count);
-                        $('#test-leads-date-range').text(response.date_range || 'N/A');
+                        $('#test-contacts-total-count').text(response.total_count);
+                        $('#test-contacts-display-count').text(response.display_count);
+                        $('#test-contacts-date-range').text(response.date_range || 'N/A');
 
-                        // Populate table
-                        if (response.leads && response.leads.length > 0) {
+                        if (response.contacts && response.contacts.length > 0) {
                             let tableRows = '';
-                            response.leads.forEach(function(lead) {
+                            response.contacts.forEach(function(contact) {
                                 tableRows += '<tr>' +
-                                    '<td>' + lead.id + '</td>' +
-                                    '<td>' + lead.name + '</td>' +
-                                    '<td>' + lead.email + '</td>' +
-                                    '<td>' + (lead.cake_leadid || 'N/A') + '</td>' +
-                                    '<td>' + (lead.phone || 'N/A') + '</td>' +
-                                    '<td>' + lead.created_at + '</td>' +
+                                    '<td>' + contact.id + '</td>' +
+                                    '<td>' + contact.name + '</td>' +
+                                    '<td>' + contact.email + '</td>' +
+                                    '<td>' + contact.phone + '</td>' +
+                                    '<td>' + contact.state + '</td>' +
+                                    '<td>' + contact.cake_id + '</td>' +
+                                    '<td>' + contact.created_at + '</td>' +
                                     '</tr>';
                             });
-                            $('#test-leads-table-body').html(tableRows);
+                            $('#test-contacts-table-body').html(tableRows);
                         } else {
-                            $('#test-leads-table-body').html('<tr><td colspan="6" class="text-center">No test leads found.</td></tr>');
+                            $('#test-contacts-table-body').html('<tr><td colspan="7" class="text-center">No test contacts found.</td></tr>');
                         }
                     } else {
-                        $('#test-leads-table-body').html('<tr><td colspan="6" class="text-center text-danger">Error loading test leads.</td></tr>');
+                            $('#test-contacts-table-body').html('<tr><td colspan="7" class="text-center text-danger">Error loading test contacts.</td></tr>');
                     }
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error loading test leads:', error);
-                    $('#test-leads-table-body').html('<tr><td colspan="6" class="text-center text-danger">Error loading test leads. Please try again.</td></tr>');
+                    console.error('Error loading test contacts:', error);
+                    $('#test-contacts-table-body').html('<tr><td colspan="6" class="text-center text-danger">Error loading test contacts. Please try again.</td></tr>');
                 }
             });
         }
 
-        function showDeleteTestLeadsModal() {
-            $('#delete-test-leads-model').modal('show');
-            loadTestLeads();
+        function showDeleteTestContactsModal() {
+            $('#delete-test-contacts-model').modal('show');
+            loadTestContacts();
         }
 
-        function hideDeleteTestLeadsModal() {
-            $('#delete-test-leads-model').modal('hide');
+        function hideDeleteTestContactsModal() {
+            $('#delete-test-contacts-model').modal('hide');
         }
 
-        function deleteTestLeads() {
-            if (!confirm('Are you sure you want to delete all test leads? This action cannot be undone.')) {
+        function deleteTestContacts() {
+            if (!confirm('Are you sure you want to delete all test contacts? This action cannot be undone.')) {
                 return;
             }
 
-            $('#confirmDeleteTestLeadsBtn').prop('disabled', true).text('Deleting...');
+            $('#confirmDeleteTestContactsBtn').prop('disabled', true).text('Deleting...');
 
             $.ajax({
-                url: '{{ route("leads.test-leads.delete") }}',
+                url: '{{ route("tra-contacts.test-contacts.delete") }}',
                 type: 'POST',
                 dataType: 'json',
                 headers: {
@@ -1762,36 +1413,51 @@
                 success: function(response) {
                     if (response.success) {
                         alert(response.message);
-                        hideDeleteTestLeadsModal();
-                        // Reload the leads table
-                        if (typeof leadsTable !== 'undefined' && leadsTable) {
-                            leadsTable.ajax.reload();
+                        hideDeleteTestContactsModal();
+                        if (typeof table !== 'undefined' && table) {
+                            table.ajax.reload();
                         }
                     } else {
-                        alert('Error: ' + (response.message || 'Failed to delete test leads.'));
+                        alert('Error: ' + (response.message || 'Failed to delete test contacts.'));
                     }
-                    $('#confirmDeleteTestLeadsBtn').prop('disabled', false).text('Confirm');
+                    $('#confirmDeleteTestContactsBtn').prop('disabled', false).text('Confirm');
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error deleting test leads:', error);
-                    alert('Error deleting test leads. Please try again.');
-                    $('#confirmDeleteTestLeadsBtn').prop('disabled', false).text('Confirm');
+                    console.error('Error deleting test contacts:', error);
+                    alert('Error deleting test contacts. Please try again.');
+                    $('#confirmDeleteTestContactsBtn').prop('disabled', false).text('Confirm');
                 }
             });
         }
 
-        // Event handlers
-        $(document).on('click', '#openDeleteTestLeadsModalBtn', function() {
-            showDeleteTestLeadsModal();
+        $(document).on('click', '#openDeleteTestContactsModalBtn', function() {
+            showDeleteTestContactsModal();
         });
 
-        $(document).on('click', '#closeDeleteTestLeadsModalBtn, #cancelDeleteTestLeadsBtn', function() {
-            hideDeleteTestLeadsModal();
+        $(document).on('click', '#closeDeleteTestContactsModalBtn, #cancelDeleteTestContactsBtn', function() {
+            hideDeleteTestContactsModal();
         });
 
-        $(document).on('click', '#confirmDeleteTestLeadsBtn', function() {
-            deleteTestLeads();
+        $(document).on('click', '#confirmDeleteTestContactsBtn', function() {
+            deleteTestContacts();
         });
+
+        const inputField = document.getElementById('file-prefix');
+        if (inputField) {
+            inputField.addEventListener('input', function() {
+                let inputValue = this.value;
+                const sanitizedValue = inputValue.replace(/[^a-zA-Z0-9_-]/g, '');
+                const hasSpecialChars = inputValue !== sanitizedValue;
+
+                if (hasSpecialChars) {
+                    toastr.warning('Special characters (except - and _) are not allowed.');
+                    this.value = sanitizedValue;
+                }
+
+                this.value = this.value.replace(/\s+/g, '');
+            });
+        }
     });
 </script>
 @endsection
+

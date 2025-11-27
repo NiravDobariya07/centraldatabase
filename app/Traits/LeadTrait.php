@@ -8,7 +8,7 @@ use App\Exports\LeadExport;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
-use App\Models\{ Lead, Export, ExportFile };
+use App\Models\{ AllContact, Export, ExportFile, ConsumerInsiteContact, TraContact };
 use App\Mail\ExportFileGeneratedMail;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +23,7 @@ trait LeadTrait
     protected string $exportLogChannel = 'export_daily';
     protected int $exportFetchChunkSize = 100000;
 
-    public function exportData($query, $fields, $userId, $exportId, $maxId, $format = 'xlsx', $filePrefix = 'leads_export')
+    public function exportData($query, $fields, $userId, $exportId, $maxId, $format = 'xlsx', $filePrefix = 'leads_export', $modelType = 'AllContact')
     {
         $logPrefix = "Export Id ({$exportId}) :";
         try {
@@ -69,7 +69,7 @@ trait LeadTrait
 
             $writer->setDefaultRowStyle($defaultStyle)->openToFile($fullPath);
 
-            $headers = array_map(fn($fieldKey) => getLeadKeyByValue($fieldKey), $fields);
+            $headers = array_map(fn($fieldKey) => getLeadKeyByValue($fieldKey, $modelType), $fields);
             $writer->addRow(WriterEntityFactory::createRowFromArray($headers, $headerStyle));
 
             $total = (clone $query)->where('id', '<=', $maxId)->count();
@@ -84,10 +84,6 @@ trait LeadTrait
 
                         foreach ($fields as $field) {
                             $value = data_get($item, $field);
-
-                            if ($field === 'list_id') {
-                                $value = $item->campaign_list_data->list_id ?? '';
-                            }
 
                             if ($value instanceof \Carbon\Carbon) {
                                 $value = $value->toDateTimeString();
@@ -133,7 +129,7 @@ trait LeadTrait
         }
     }
 
-    public function exportMultipleFilesAndZip($query, $fields, $userId, $exportId, $maxId, $format = 'xlsx', $filePrefix = 'leads_export')
+    public function exportMultipleFilesAndZip($query, $fields, $userId, $exportId, $maxId, $format = 'xlsx', $filePrefix = 'leads_export', $modelType = 'AllContact')
     {
         $logPrefix = "Export Id ({$exportId}) :";
         try {
@@ -192,7 +188,7 @@ trait LeadTrait
 
                     $writer->openToFile($fullPath);
 
-                    $headers = array_map(fn($fieldKey) => getLeadKeyByValue($fieldKey), $fields);
+                    $headers = array_map(fn($fieldKey) => getLeadKeyByValue($fieldKey, $modelType), $fields);
                     $headerStyle = (new StyleBuilder())->setFontSize(12)->build();
                     $writer->addRow(WriterEntityFactory::createRowFromArray($headers, $headerStyle));
 
@@ -200,9 +196,6 @@ trait LeadTrait
                         $rowData = [];
                         foreach ($fields as $field) {
                             $value = data_get($item, $field);
-                            if ($field === 'list_id') {
-                                $value = $item->campaign_list_data->list_id ?? '';
-                            }
                             if ($value instanceof \Carbon\Carbon) {
                                 $value = $value->toDateTimeString();
                             }
@@ -283,86 +276,91 @@ trait LeadTrait
             $exportScheduledData = Export::find($exportId);
             if (!empty($exportScheduledData)) {
                 $exportScheduledData->update(['last_run_at' => now()]);
-                $exportQuery = Lead::query();
+                $exportQuery = AllContact::query();
 
-                // Search filter
-                $exportQuery->when(!empty($exportScheduledData->filters['search_value']), function ($query) use ($exportScheduledData) {
-                    $query->whereRaw(
-                        "to_tsvector('english', search_vector) @@ websearch_to_tsquery(?)",
-                        [$exportScheduledData->filters['search_value']]
-                    );
-                });
+                // Column-specific filter
+                if (!empty($exportScheduledData->filters['filter_column']) && !empty($exportScheduledData->filters['search_value'])) {
+                    $column = $exportScheduledData->filters['filter_column'];
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
 
-                // Source site filter
-                $exportQuery->when(!empty($exportScheduledData->filters['source_site_id']) && is_array($exportScheduledData->filters['source_site_id']), function ($query) use ($exportScheduledData) {
-                    $query->whereIn('source_site_id', $exportScheduledData->filters['source_site_id']);
-                });
+                    // Map frontend column names to database column names
+                    $columnMapping = [
+                        'first_name' => 'first_name',
+                        'last_name' => 'last_name',
+                        'email' => 'email',
+                        'email_domain' => 'email_domain',
+                        'phone' => 'phone',
+                        'aff_id' => 'aff_id',
+                        'sub_id' => 'sub_id',
+                        'journya' => 'journya',
+                        'cake_leadid' => 'cake_leadid',
+                        'optin_domain' => 'optin_domain',
+                        'domain_abt' => 'domain_abt',
+                        'trusted_form' => 'trusted_form',
+                        'ip_address' => 'ip_address',
+                        'esp' => 'esp',
+                        'result' => 'result',
+                        'offer_id' => 'offer_id',
+                    ];
 
-                // Campaign list filter
-                $exportQuery->when(!empty($exportScheduledData->filters['campaign_list_id']) && is_array($exportScheduledData->filters['campaign_list_id']), function ($query) use ($exportScheduledData) {
-                    $query->whereIn('campaign_list_id', $exportScheduledData->filters['campaign_list_id']);
-                });
+                    // Get the actual database column name
+                    $dbColumn = $columnMapping[$column] ?? $column;
 
-                // Date subscribed filter
-                $exportQuery->when(
-                    !empty($exportScheduledData->filters['date_subscribed']['from']) && !empty($exportScheduledData->filters['date_subscribed']['to']),
-                    function ($query) use ($exportScheduledData) {
-                        $query->whereBetween('date_subscribed', [
-                            Carbon::parse($exportScheduledData->filters['date_subscribed']['from'])->startOfDay(),
-                            Carbon::parse($exportScheduledData->filters['date_subscribed']['to'])->endOfDay()
-                        ]);
+                    // Apply filter on the specific column
+                    if (in_array($dbColumn, array_values($columnMapping))) {
+                        $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
                     }
-                );
-
-                // Import date filter
-                $exportQuery->when(
-                    !empty($exportScheduledData->filters['import_date']['from']) && !empty($exportScheduledData->filters['import_date']['to']),
-                    function ($query) use ($exportScheduledData) {
-                        $query->whereBetween('import_date', [
-                            Carbon::parse($exportScheduledData->filters['import_date']['from'])->startOfDay(),
-                            Carbon::parse($exportScheduledData->filters['import_date']['to'])->endOfDay()
-                        ]);
-                    }
-                );
-
-                // Tax debt amount filter
-                if (
-                    !empty($exportScheduledData->filters['tax_debt_amount']) &&
-                    isset($exportScheduledData->filters['tax_debt_amount']['operator'], $exportScheduledData->filters['tax_debt_amount']['value']) &&
-                    $exportScheduledData->filters['tax_debt_amount']['value'] !== null &&
-                    $exportScheduledData->filters['tax_debt_amount']['value'] !== ''
-                ) {
-                    $exportQuery->where(
-                        'tax_debt_amount',
-                        $exportScheduledData->filters['tax_debt_amount']['operator'],
-                        $exportScheduledData->filters['tax_debt_amount']['value']
-                    );
+                } elseif (!empty($exportScheduledData->filters['search_value'])) {
+                    // Fallback: if no column is selected, search across all common fields
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+                    $exportQuery->where(function ($query) use ($searchTerm) {
+                        $query->where('cake_leadid', 'LIKE', $searchTerm)
+                            ->orWhere('email', 'LIKE', $searchTerm)
+                            ->orWhere('phone', 'LIKE', $searchTerm)
+                            ->orWhere('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('email_domain', 'LIKE', $searchTerm)
+                            ->orWhere('optin_domain', 'LIKE', $searchTerm)
+                            ->orWhere('aff_id', 'LIKE', $searchTerm)
+                            ->orWhere('sub_id', 'LIKE', $searchTerm)
+                            ->orWhere('journya', 'LIKE', $searchTerm)
+                            ->orWhere('trusted_form', 'LIKE', $searchTerm);
+                    });
                 }
 
-                // CC debt amount filter
-                if (
-                    !empty($exportScheduledData->filters['cc_debt_amount']) &&
-                    isset($exportScheduledData->filters['cc_debt_amount']['operator'], $exportScheduledData->filters['cc_debt_amount']['value']) &&
-                    $exportScheduledData->filters['cc_debt_amount']['value'] !== null &&
-                    $exportScheduledData->filters['cc_debt_amount']['value'] !== ''
-                ) {
-                    $exportQuery->where(
-                        'cc_debt_amount',
-                        $exportScheduledData->filters['cc_debt_amount']['operator'],
-                        $exportScheduledData->filters['cc_debt_amount']['value']
-                    );
+                // Date range filter - supports partial dates
+                if (!empty($exportScheduledData->filters['date_range']['from']) && !empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Both dates provided - validate and filter between them
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+
+                    // Validate that end date is not before start date
+                    if ($endDate->lt($startDate)) {
+                        throw new \Exception('End Date cannot be before Start Date');
+                    }
+
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['from'])) {
+                    // Only start date provided - filter from start date to today
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Only end date provided - filter from beginning to end date
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+                    $exportQuery->where('created_at', '<=', $endDate);
                 }
 
                 // Apply sorting if 'sort_by' exists in additional_data
-                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']), 
+                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']),
                     function ($query) use ($exportScheduledData) {
                         $query->orderBy(
-                            $exportScheduledData->additional_data['sort_by']['field'], 
+                            $exportScheduledData->additional_data['sort_by']['field'],
                             $exportScheduledData->additional_data['sort_by']['sorting_order']
                         );
                     }
                 );
-                
+
                 $fields = $exportScheduledData->columns;
                 $filePrefix = $exportScheduledData->file_prefix;
                 // Snapshot max ID to prevent export of records added during the run
@@ -380,7 +378,8 @@ trait LeadTrait
                                 $exportId,
                                 $maxId,
                                 $exportFilformat,
-                                $filePrefix
+                                $filePrefix,
+                                'TraContact'
                             );
                         } else {
                             $generatedExportFileData = $this->exportData(
@@ -390,10 +389,11 @@ trait LeadTrait
                                 $exportId,
                                 $maxId,
                                 $exportFilformat,
-                                $filePrefix
+                                $filePrefix,
+                                'TraContact'
                             );
                         }
-        
+
                         if (!empty($generatedExportFileData['file_path']) && !empty($generatedExportFileData['file_name'])) {
                             $createFilePostData = [
                                 'export_id' => $exportScheduledData->id,
@@ -429,7 +429,7 @@ trait LeadTrait
                             } else {
                                 Log::channel($this->exportLogChannel)->warning("❗{$logPrefix} Failed to create export file record.", $createFilePostData);
                                 throw new \Exception("Failed to create export file record.");
-                            } 
+                            }
                         } else {
                             Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Failed to generate export file.", ['generated_export_data' => $generatedExportFileData]);
                             throw new \Exception("Failed to generate export file.");
@@ -437,7 +437,7 @@ trait LeadTrait
                     }
                 } else {
                     Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Export format not specified for export process.", ['export_scheduled_data' => $exportScheduledData]);
-                    throw new \Exception("No export format specified.");  
+                    throw new \Exception("No export format specified.");
                 }
 
                 $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PENDING'];
@@ -490,7 +490,445 @@ trait LeadTrait
             }
             reportException($e, "Error Export", true, $this->exportLogChannel);
             throw $e; // Correct syntax for rethrowing the exception
-        }        
+        }
+    }
+
+    public function processConsumerInsiteContactExport($exportId) {
+        Log::channel($this->exportLogChannel)->info('🧠 PHP memory limit: ' . ini_get('memory_limit'));
+        Log::channel($this->exportLogChannel)->info('⏱️ PHP max execution time: ' . ini_get('max_execution_time'));
+
+        DB::beginTransaction();
+        $logPrefix = "Export Id ({$exportId}) :";
+        try {
+            Log::channel($this->exportLogChannel)->info("🚀 {$logPrefix} Consumer Insite Contact export process started", ['export_id' => $exportId]);
+
+            $exportScheduledData = Export::find($exportId);
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['last_run_at' => now()]);
+                $exportQuery = ConsumerInsiteContact::query()->where('deleted_at', 0);
+
+                // Column-specific filter
+                if (!empty($exportScheduledData->filters['filter_column']) && !empty($exportScheduledData->filters['search_value'])) {
+                    $column = $exportScheduledData->filters['filter_column'];
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+
+                    // Map frontend column names to database column names
+                    $columnMapping = [
+                        'first_name' => 'first_name',
+                        'last_name' => 'last_name',
+                        'email' => 'email',
+                        'age' => 'age',
+                        'credit_score' => 'credit_score',
+                        'location_name' => 'location_name',
+                        'result' => 'result',
+                        'resultid' => 'resultid',
+                    ];
+
+                    // Get the actual database column name
+                    $dbColumn = $columnMapping[$column] ?? $column;
+
+                    // Apply filter on the specific column
+                    if (in_array($dbColumn, array_values($columnMapping))) {
+                        $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
+                    }
+                } elseif (!empty($exportScheduledData->filters['search_value'])) {
+                    // Fallback: if no column is selected, search across all common fields
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+                    $exportQuery->where(function ($query) use ($searchTerm) {
+                        $query->where('email', 'LIKE', $searchTerm)
+                            ->orWhere('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('age', 'LIKE', $searchTerm)
+                            ->orWhere('credit_score', 'LIKE', $searchTerm)
+                            ->orWhere('location_name', 'LIKE', $searchTerm)
+                            ->orWhere('result', 'LIKE', $searchTerm);
+                    });
+                }
+
+                // Date range filter - supports partial dates
+                if (!empty($exportScheduledData->filters['date_range']['from']) && !empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Both dates provided - validate and filter between them
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+
+                    // Validate that end date is not before start date
+                    if ($endDate->lt($startDate)) {
+                        throw new \Exception('End Date cannot be before Start Date');
+                    }
+
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['from'])) {
+                    // Only start date provided - filter from start date to today
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Only end date provided - filter from beginning to end date
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+                    $exportQuery->where('created_at', '<=', $endDate);
+                }
+
+                // Apply sorting if 'sort_by' exists in additional_data
+                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']),
+                    function ($query) use ($exportScheduledData) {
+                        $query->orderBy(
+                            $exportScheduledData->additional_data['sort_by']['field'],
+                            $exportScheduledData->additional_data['sort_by']['sorting_order']
+                        );
+                    }
+                );
+
+                $fields = $exportScheduledData->columns;
+                $filePrefix = $exportScheduledData->file_prefix ?: 'consumer_insite_contacts_export';
+                // Snapshot max ID to prevent export of records added during the run
+                $maxId = (clone $exportQuery)->max('id') ?? 0;
+
+                if (!empty($exportScheduledData->export_formats) && is_array($exportScheduledData->export_formats)) {
+                    foreach ($exportScheduledData->export_formats as $exportFilformat) {
+                        Log::channel($this->exportLogChannel)->info("📄 {$logPrefix} Generating export file", ['format' => $exportFilformat]);
+
+                        if (!empty($exportScheduledData->additional_data['export_in_batches'])) {
+                            $generatedExportFileData = $this->exportMultipleFilesAndZip(
+                                $exportQuery,
+                                $fields,
+                                $exportScheduledData->user_id,
+                                $exportId,
+                                $maxId,
+                                $exportFilformat,
+                                $filePrefix,
+                                'TraContact'
+                            );
+                        } else {
+                            $generatedExportFileData = $this->exportData(
+                                $exportQuery,
+                                $fields,
+                                $exportScheduledData->user_id,
+                                $exportId,
+                                $maxId,
+                                $exportFilformat,
+                                $filePrefix,
+                                'TraContact'
+                            );
+                        }
+
+                        if (!empty($generatedExportFileData['file_path']) && !empty($generatedExportFileData['file_name'])) {
+                            $createFilePostData = [
+                                'export_id' => $exportScheduledData->id,
+                                'user_id' => $exportScheduledData->user_id,
+                                'file_name' => $generatedExportFileData['file_name'],
+                                'file_path' => $generatedExportFileData['file_path'],
+                                'file_format' => $exportFilformat,
+                                'file_size' => !empty($generatedExportFileData['file_size']) ? $generatedExportFileData['file_size'] : 0,
+                                'generated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+                            ];
+                            $exportFileData = ExportFile::create($createFilePostData);
+
+                            if (!empty($exportFileData)) {
+                                Log::channel($this->exportLogChannel)->info(sprintf(
+                                    "✅ {$logPrefix} Export file generated successfully (ID: %d) 📁 Path: %s",
+                                    $exportFileData->id ?? 0,
+                                    $exportFileData->file_path ?? 'N/A'
+                                ));
+
+                                // Queue email AFTER transaction commit
+                                DB::afterCommit(function () use ($exportScheduledData, $exportFileData, $logPrefix) {
+                                    // Send Email through Queue:
+                                    Mail::to($exportScheduledData->user->email)
+                                        ->queue((new ExportFileGeneratedMail($exportFileData))
+                                        ->onQueue('high-priority'));
+
+                                    Log::channel($this->exportLogChannel)->info(sprintf(
+                                        "📧 {$logPrefix} Email notification scheduled for Export File ID: %d → %s",
+                                        $exportFileData->id ?? 0,
+                                        $exportScheduledData->user->email ?? 'N/A'
+                                    ));
+                                });
+                            } else {
+                                Log::channel($this->exportLogChannel)->warning("❗{$logPrefix} Failed to create export file record.", $createFilePostData);
+                                throw new \Exception("Failed to create export file record.");
+                            }
+                        } else {
+                            Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Failed to generate export file.", ['generated_export_data' => $generatedExportFileData]);
+                            throw new \Exception("Failed to generate export file.");
+                        }
+                    }
+                } else {
+                    Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Export format not specified for export process.", ['export_scheduled_data' => $exportScheduledData]);
+                    throw new \Exception("No export format specified.");
+                }
+
+                $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PENDING'];
+                $nextRunAt = $exportScheduledData->calculateNextRun();
+                if (!empty($exportScheduledData->frequency) && !empty($exportScheduledData->status)) {
+                    if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['ACTIVE']) {
+                        if ($exportScheduledData->frequency == 'one_time') {
+                            $nextStatus = AppConstants::EXPORT_RUNING_STATUS['SUCCESS'];
+                        }
+                    } else if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['PAUSED']) {
+                        $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PAUSED'];
+                        $nextRunAt = null;
+
+                    } else if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['STOPPED']) {
+                        $nextStatus = AppConstants::EXPORT_RUNING_STATUS['STOPPED'];
+                        $nextRunAt = null;
+                    }
+                }
+
+                $exportScheduledData->update([
+                    'next_run_at' => $nextRunAt,
+                    'runing_status' => $nextStatus
+                ]);
+
+                Log::channel($this->exportLogChannel)->info("🔄 {$logPrefix} Export schedule updated.", [
+                    'export_id'    => $exportScheduledData->id ?? 'N/A',
+                    'status'       => $exportScheduledData->status ?? 'N/A',
+                    'frequency'    => $exportScheduledData->frequency ?? 'N/A',
+                    'next_run_at'  => $nextRunAt ?? 'N/A',
+                    'next_status'  => $nextStatus ?? 'N/A',
+                ]);
+            } else {
+                Log::channel($this->exportLogChannel)->warning("❌ {$logPrefix} Export not found for Export ID: {$exportId}", [
+                    'export_id' => $exportId ?? 'N/A',
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (!empty($exportId)) {
+                $exportScheduledData = Export::find($exportId);
+                $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+
+                Log::channel($this->exportLogChannel)->error("❌ {$logPrefix} Export marked as FAILED.", [
+                    'export_id' => $exportId,
+                    'error'     => $e->getMessage()
+                ]);
+            }
+            reportException($e, "Error Export", true, $this->exportLogChannel);
+            throw $e; // Correct syntax for rethrowing the exception
+        }
+    }
+
+    public function processTraContactExport($exportId) {
+        Log::channel($this->exportLogChannel)->info('🧠 PHP memory limit: ' . ini_get('memory_limit'));
+        Log::channel($this->exportLogChannel)->info('⏱️ PHP max execution time: ' . ini_get('max_execution_time'));
+
+        DB::beginTransaction();
+        $logPrefix = "Export Id ({$exportId}) :";
+        try {
+            Log::channel($this->exportLogChannel)->info("🚀 {$logPrefix} TRA Contact export process started", ['export_id' => $exportId]);
+
+            $exportScheduledData = Export::find($exportId);
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['last_run_at' => now()]);
+                $exportQuery = TraContact::query();
+
+                // Column-specific filter
+                if (!empty($exportScheduledData->filters['filter_column']) && !empty($exportScheduledData->filters['search_value'])) {
+                    $column = $exportScheduledData->filters['filter_column'];
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+
+                    // Map frontend column names to database column names
+                    $columnMapping = [
+                        'first_name' => 'first_name',
+                        'last_name' => 'last_name',
+                        'email' => 'email',
+                        'email_domain' => 'email_domain',
+                        'phone' => 'phone',
+                        'state' => 'state',
+                        'zip_code' => 'zip_code',
+                        'cake_id' => 'cake_id',
+                        'aff_id' => 'aff_id',
+                        'sub_id' => 'sub_id',
+                        'offer_id' => 'offer_id',
+                    ];
+
+                    // Get the actual database column name
+                    $dbColumn = $columnMapping[$column] ?? $column;
+
+                    // Apply filter on the specific column
+                    if (in_array($dbColumn, array_values($columnMapping))) {
+                        $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
+                    }
+                } elseif (!empty($exportScheduledData->filters['search_value'])) {
+                    // Fallback: if no column is selected, search across all common fields
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+                    $exportQuery->where(function ($query) use ($searchTerm) {
+                        $query->where('email', 'LIKE', $searchTerm)
+                            ->orWhere('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('phone', 'LIKE', $searchTerm)
+                            ->orWhere('cake_id', 'LIKE', $searchTerm)
+                            ->orWhere('email_domain', 'LIKE', $searchTerm)
+                            ->orWhere('state', 'LIKE', $searchTerm)
+                            ->orWhere('zip_code', 'LIKE', $searchTerm);
+                    });
+                }
+
+                // Date range filter - supports partial dates
+                if (!empty($exportScheduledData->filters['date_range']['from']) && !empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Both dates provided - validate and filter between them
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+
+                    // Validate that end date is not before start date
+                    if ($endDate->lt($startDate)) {
+                        throw new \Exception('End Date cannot be before Start Date');
+                    }
+
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['from'])) {
+                    // Only start date provided - filter from start date to today
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Only end date provided - filter from beginning to end date
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+                    $exportQuery->where('created_at', '<=', $endDate);
+                }
+
+                // Apply sorting if 'sort_by' exists in additional_data
+                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']),
+                    function ($query) use ($exportScheduledData) {
+                        $query->orderBy(
+                            $exportScheduledData->additional_data['sort_by']['field'],
+                            $exportScheduledData->additional_data['sort_by']['sorting_order']
+                        );
+                    }
+                );
+
+                $fields = $exportScheduledData->columns;
+                $filePrefix = $exportScheduledData->file_prefix ?: 'tra_contacts_export';
+                // Snapshot max ID to prevent export of records added during the run
+                $maxId = (clone $exportQuery)->max('id') ?? 0;
+
+                if (!empty($exportScheduledData->export_formats) && is_array($exportScheduledData->export_formats)) {
+                    foreach ($exportScheduledData->export_formats as $exportFilformat) {
+                        Log::channel($this->exportLogChannel)->info("📄 {$logPrefix} Generating export file", ['format' => $exportFilformat]);
+
+                        if (!empty($exportScheduledData->additional_data['export_in_batches'])) {
+                            $generatedExportFileData = $this->exportMultipleFilesAndZip(
+                                $exportQuery,
+                                $fields,
+                                $exportScheduledData->user_id,
+                                $exportId,
+                                $maxId,
+                                $exportFilformat,
+                                $filePrefix,
+                                'TraContact'
+                            );
+                        } else {
+                            $generatedExportFileData = $this->exportData(
+                                $exportQuery,
+                                $fields,
+                                $exportScheduledData->user_id,
+                                $exportId,
+                                $maxId,
+                                $exportFilformat,
+                                $filePrefix,
+                                'TraContact'
+                            );
+                        }
+
+                        if (!empty($generatedExportFileData['file_path']) && !empty($generatedExportFileData['file_name'])) {
+                            $createFilePostData = [
+                                'export_id' => $exportScheduledData->id,
+                                'user_id' => $exportScheduledData->user_id,
+                                'file_name' => $generatedExportFileData['file_name'],
+                                'file_path' => $generatedExportFileData['file_path'],
+                                'file_format' => $exportFilformat,
+                                'file_size' => !empty($generatedExportFileData['file_size']) ? $generatedExportFileData['file_size'] : 0,
+                                'generated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+                            ];
+                            $exportFileData = ExportFile::create($createFilePostData);
+
+                            if (!empty($exportFileData)) {
+                                Log::channel($this->exportLogChannel)->info(sprintf(
+                                    "✅ {$logPrefix} Export file generated successfully (ID: %d) 📁 Path: %s",
+                                    $exportFileData->id ?? 0,
+                                    $exportFileData->file_path ?? 'N/A'
+                                ));
+
+                                // Queue email AFTER transaction commit
+                                DB::afterCommit(function () use ($exportScheduledData, $exportFileData, $logPrefix) {
+                                    // Send Email through Queue:
+                                    Mail::to($exportScheduledData->user->email)
+                                        ->queue((new ExportFileGeneratedMail($exportFileData))
+                                        ->onQueue('high-priority'));
+
+                                    Log::channel($this->exportLogChannel)->info(sprintf(
+                                        "📧 {$logPrefix} Email notification scheduled for Export File ID: %d → %s",
+                                        $exportFileData->id ?? 0,
+                                        $exportScheduledData->user->email ?? 'N/A'
+                                    ));
+                                });
+                            } else {
+                                Log::channel($this->exportLogChannel)->warning("❗{$logPrefix} Failed to create export file record.", $createFilePostData);
+                                throw new \Exception("Failed to create export file record.");
+                            }
+                        } else {
+                            Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Failed to generate export file.", ['generated_export_data' => $generatedExportFileData]);
+                            throw new \Exception("Failed to generate export file.");
+                        }
+                    }
+                } else {
+                    Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Export format not specified for export process.", ['export_scheduled_data' => $exportScheduledData]);
+                    throw new \Exception("No export format specified.");
+                }
+
+                $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PENDING'];
+                $nextRunAt = $exportScheduledData->calculateNextRun();
+                if (!empty($exportScheduledData->frequency) && !empty($exportScheduledData->status)) {
+                    if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['ACTIVE']) {
+                        if ($exportScheduledData->frequency == 'one_time') {
+                            $nextStatus = AppConstants::EXPORT_RUNING_STATUS['SUCCESS'];
+                        }
+                    } else if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['PAUSED']) {
+                        $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PAUSED'];
+                        $nextRunAt = null;
+
+                    } else if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['STOPPED']) {
+                        $nextStatus = AppConstants::EXPORT_RUNING_STATUS['STOPPED'];
+                        $nextRunAt = null;
+                    }
+                }
+
+                $exportScheduledData->update([
+                    'next_run_at' => $nextRunAt,
+                    'runing_status' => $nextStatus
+                ]);
+
+                Log::channel($this->exportLogChannel)->info("🔄 {$logPrefix} Export schedule updated.", [
+                    'export_id'    => $exportScheduledData->id ?? 'N/A',
+                    'status'       => $exportScheduledData->status ?? 'N/A',
+                    'frequency'    => $exportScheduledData->frequency ?? 'N/A',
+                    'next_run_at'  => $nextRunAt ?? 'N/A',
+                    'next_status'  => $nextStatus ?? 'N/A',
+                ]);
+            } else {
+                Log::channel($this->exportLogChannel)->warning("❌ {$logPrefix} Export not found for Export ID: {$exportId}", [
+                    'export_id' => $exportId ?? 'N/A',
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (!empty($exportId)) {
+                $exportScheduledData = Export::find($exportId);
+                $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+
+                Log::channel($this->exportLogChannel)->error("❌ {$logPrefix} Export marked as FAILED.", [
+                    'export_id' => $exportId,
+                    'error'     => $e->getMessage()
+                ]);
+            }
+            reportException($e, "Error Export", true, $this->exportLogChannel);
+            throw $e; // Correct syntax for rethrowing the exception
+        }
     }
 
     public function getExportableRecordCount($exportId) {
@@ -499,78 +937,83 @@ trait LeadTrait
         try {
             $exportScheduledData = Export::find($exportId);
             if (!empty($exportScheduledData)) {
-                $exportQuery = Lead::query();
+                $exportQuery = AllContact::query();
 
-                // Search filter
-                $exportQuery->when(!empty($exportScheduledData->filters['search_value']), function ($query) use ($exportScheduledData) {
-                    $query->whereRaw(
-                        "to_tsvector('english', search_vector) @@ websearch_to_tsquery(?)",
-                        [$exportScheduledData->filters['search_value']]
-                    );
-                });
+                // Column-specific filter
+                if (!empty($exportScheduledData->filters['filter_column']) && !empty($exportScheduledData->filters['search_value'])) {
+                    $column = $exportScheduledData->filters['filter_column'];
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
 
-                // Source site filter
-                $exportQuery->when(!empty($exportScheduledData->filters['source_site_id']) && is_array($exportScheduledData->filters['source_site_id']), function ($query) use ($exportScheduledData) {
-                    $query->whereIn('source_site_id', $exportScheduledData->filters['source_site_id']);
-                });
+                    // Map frontend column names to database column names
+                    $columnMapping = [
+                        'first_name' => 'first_name',
+                        'last_name' => 'last_name',
+                        'email' => 'email',
+                        'email_domain' => 'email_domain',
+                        'phone' => 'phone',
+                        'aff_id' => 'aff_id',
+                        'sub_id' => 'sub_id',
+                        'journya' => 'journya',
+                        'cake_leadid' => 'cake_leadid',
+                        'optin_domain' => 'optin_domain',
+                        'domain_abt' => 'domain_abt',
+                        'trusted_form' => 'trusted_form',
+                        'ip_address' => 'ip_address',
+                        'esp' => 'esp',
+                        'result' => 'result',
+                        'offer_id' => 'offer_id',
+                    ];
 
-                // Campaign list filter
-                $exportQuery->when(!empty($exportScheduledData->filters['campaign_list_id']) && is_array($exportScheduledData->filters['campaign_list_id']), function ($query) use ($exportScheduledData) {
-                    $query->whereIn('campaign_list_id', $exportScheduledData->filters['campaign_list_id']);
-                });
+                    // Get the actual database column name
+                    $dbColumn = $columnMapping[$column] ?? $column;
 
-                // Date subscribed filter
-                $exportQuery->when(
-                    !empty($exportScheduledData->filters['date_subscribed']['from']) && !empty($exportScheduledData->filters['date_subscribed']['to']),
-                    function ($query) use ($exportScheduledData) {
-                        $query->whereBetween('date_subscribed', [
-                            Carbon::parse($exportScheduledData->filters['date_subscribed']['from'])->startOfDay(),
-                            Carbon::parse($exportScheduledData->filters['date_subscribed']['to'])->endOfDay()
-                        ]);
+                    // Apply filter on the specific column
+                    if (in_array($dbColumn, array_values($columnMapping))) {
+                        $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
                     }
-                );
-
-                // Import date filter
-                $exportQuery->when(
-                    !empty($exportScheduledData->filters['import_date']['from']) && !empty($exportScheduledData->filters['import_date']['to']),
-                    function ($query) use ($exportScheduledData) {
-                        $query->whereBetween('import_date', [
-                            Carbon::parse($exportScheduledData->filters['import_date']['from'])->startOfDay(),
-                            Carbon::parse($exportScheduledData->filters['import_date']['to'])->endOfDay()
-                        ]);
-                    }
-                );
-
-                // Tax debt amount filter
-                if (
-                    !empty($exportScheduledData->filters['tax_debt_amount']) &&
-                    isset($exportScheduledData->filters['tax_debt_amount']['operator'], $exportScheduledData->filters['tax_debt_amount']['value']) &&
-                    $exportScheduledData->filters['tax_debt_amount']['value'] !== null &&
-                    $exportScheduledData->filters['tax_debt_amount']['value'] !== ''
-                ) {
-                    $exportQuery->where(
-                        'tax_debt_amount',
-                        $exportScheduledData->filters['tax_debt_amount']['operator'],
-                        $exportScheduledData->filters['tax_debt_amount']['value']
-                    );
+                } elseif (!empty($exportScheduledData->filters['search_value'])) {
+                    // Fallback: if no column is selected, search across all common fields
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+                    $exportQuery->where(function ($query) use ($searchTerm) {
+                        $query->where('cake_leadid', 'LIKE', $searchTerm)
+                            ->orWhere('email', 'LIKE', $searchTerm)
+                            ->orWhere('phone', 'LIKE', $searchTerm)
+                            ->orWhere('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('email_domain', 'LIKE', $searchTerm)
+                            ->orWhere('optin_domain', 'LIKE', $searchTerm)
+                            ->orWhere('aff_id', 'LIKE', $searchTerm)
+                            ->orWhere('sub_id', 'LIKE', $searchTerm)
+                            ->orWhere('journya', 'LIKE', $searchTerm)
+                            ->orWhere('trusted_form', 'LIKE', $searchTerm);
+                    });
                 }
 
-                // CC debt amount filter
-                if (
-                    !empty($exportScheduledData->filters['cc_debt_amount']) &&
-                    isset($exportScheduledData->filters['cc_debt_amount']['operator'], $exportScheduledData->filters['cc_debt_amount']['value']) &&
-                    $exportScheduledData->filters['cc_debt_amount']['value'] !== null &&
-                    $exportScheduledData->filters['cc_debt_amount']['value'] !== ''
-                ) {
-                    $exportQuery->where(
-                        'cc_debt_amount',
-                        $exportScheduledData->filters['cc_debt_amount']['operator'],
-                        $exportScheduledData->filters['cc_debt_amount']['value']
-                    );
+                // Date range filter - supports partial dates
+                if (!empty($exportScheduledData->filters['date_range']['from']) && !empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Both dates provided - validate and filter between them
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+
+                    // Validate that end date is not before start date
+                    if ($endDate->lt($startDate)) {
+                        throw new \Exception('End Date cannot be before Start Date');
+                    }
+
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['from'])) {
+                    // Only start date provided - filter from start date to today
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Only end date provided - filter from beginning to end date
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+                    $exportQuery->where('created_at', '<=', $endDate);
                 }
 
                 // Apply sorting if 'sort_by' exists in additional_data
-                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']), 
+                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']),
                     function ($query) use ($exportScheduledData) {
                         $query->orderBy(
                             $exportScheduledData->additional_data['sort_by']['field'],
@@ -595,3 +1038,4 @@ trait LeadTrait
         return $totalExportableRecordsCount;
     }
 }
+

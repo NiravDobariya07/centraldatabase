@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\Lead;
+use App\Models\AllContact;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +46,7 @@ class SyncLeadsToProduction extends Command
         $this->info("🔄 Initiating lead sync from leads with ID > {$lastInsertedId}...");
         Log::channel('lead_sync')->info("Lead sync started from ID > {$lastInsertedId}");
 
-        Lead::where('id', '>', $lastInsertedId)
+        AllContact::where('id', '>', $lastInsertedId)
             ->orderBy('id')
             ->chunkById(10000, function ($leadsChunk) {
                 foreach ($leadsChunk as $lead) {
@@ -93,7 +93,7 @@ class SyncLeadsToProduction extends Command
      * @param Lead $lead
      * @return \Illuminate\Http\Client\Response
      */
-    protected function syncLeadToProduction(Lead $lead)
+    protected function syncLeadToProduction(AllContact $lead)
     {
 
         $postData = [
@@ -140,7 +140,7 @@ class SyncLeadsToProduction extends Command
         } else {
             $postData['Date_Subscribed'] = null;
         }
-        
+
         if (!empty($lead->dob) && strtotime($lead->dob) !== false) {
             $postData['DOB'] = \Carbon\Carbon::parse($lead->dob)->format('Y-m-d');
         } else {

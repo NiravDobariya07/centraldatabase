@@ -10,6 +10,8 @@ class Setting extends Model
 
     protected $fillable = [
         'user_id',
-        'lead_fields'
+        'lead_fields',
+        'consumer_insite_contact_fields',
+        'tra_contact_fields'
     ];
 }

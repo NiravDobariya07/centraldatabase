@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\Lead;
+use App\Models\AllContact;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Illuminate\Contracts\View\View;
 use Maatwebsite\Excel\Concerns\FromQuery;
@@ -30,15 +30,8 @@ class LeadExport implements FromQuery, WithHeadings, WithMapping, WithChunkReadi
 
     public function query()
     {
-        // Replace 'list_id' with 'campaign_list_id' in the selection
-        $fields = array_map(fn($field) => $field === 'list_id' ? 'campaign_list_id' : $field, $this->fields);
-
-        $query = $this->model->select($fields);
-
-        // Load relation only when 'list_id' is required
-        if (in_array('list_id', $this->fields)) {
-            $query->with('campaignList');
-        }
+        // all_contacts table has list_id directly, no need for relationship
+        $query = $this->model->select($this->fields);
 
         return $query;
     }
@@ -56,9 +49,6 @@ class LeadExport implements FromQuery, WithHeadings, WithMapping, WithChunkReadi
     {
         return collect($this->fields)
         ->map(function ($field) use ($row) {
-            if ($field === 'list_id') {
-                return $row->campaignList->list_id ?? null; // Fetch from relation
-            }
             return $row->$field ?? null;
         })
         ->toArray();

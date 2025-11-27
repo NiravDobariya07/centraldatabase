@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{ Lead, CampaignListId, SourceSite };
+use App\Models\AllContact;
 use App\Models\ExportFile;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -17,53 +17,81 @@ class LeadsController extends Controller
     {
         try {
             if ($request->ajax()) {
-                $leads = Lead::select(['*']);
+                $leads = AllContact::select(['*']);
 
-                if (!empty($request->search_value)) {
-                    $leads->whereRaw("to_tsvector('english', search_vector) @@ websearch_to_tsquery(?)", [$request->search_value]);
+                // Column-specific filter
+                if (!empty($request->filter_column) && !empty($request->search_value)) {
+                    $column = $request->filter_column;
+                    $searchTerm = '%' . $request->search_value . '%';
+
+                    // Map frontend column names to database column names
+                    $columnMapping = [
+                        'first_name' => 'first_name',
+                        'last_name' => 'last_name',
+                        'email' => 'email',
+                        'email_domain' => 'email_domain',
+                        'phone' => 'phone',
+                        'aff_id' => 'aff_id',
+                        'sub_id' => 'sub_id',
+                        'journya' => 'journya',
+                        'cake_leadid' => 'cake_leadid',
+                        'optin_domain' => 'optin_domain',
+                        'domain_abt' => 'domain_abt',
+                        'trusted_form' => 'trusted_form',
+                        'ip_address' => 'ip_address',
+                        'esp' => 'esp',
+                        'result' => 'result',
+                        'offer_id' => 'offer_id',
+                    ];
+
+                    // Get the actual database column name
+                    $dbColumn = $columnMapping[$column] ?? $column;
+
+                    // Apply filter on the specific column
+                    if (in_array($dbColumn, array_values($columnMapping))) {
+                        $leads->where($dbColumn, 'LIKE', $searchTerm);
+                    }
+                } elseif (!empty($request->search_value)) {
+                    // Fallback: if no column is selected, search across all common fields
+                    $searchTerm = '%' . $request->search_value . '%';
+                    $leads->where(function ($query) use ($searchTerm) {
+                        $query->where('cake_leadid', 'LIKE', $searchTerm)
+                            ->orWhere('email', 'LIKE', $searchTerm)
+                            ->orWhere('phone', 'LIKE', $searchTerm)
+                            ->orWhere('first_name', 'LIKE', $searchTerm)
+                            ->orWhere('last_name', 'LIKE', $searchTerm)
+                            ->orWhere('email_domain', 'LIKE', $searchTerm)
+                            ->orWhere('optin_domain', 'LIKE', $searchTerm)
+                            ->orWhere('aff_id', 'LIKE', $searchTerm)
+                            ->orWhere('sub_id', 'LIKE', $searchTerm)
+                            ->orWhere('journya', 'LIKE', $searchTerm)
+                            ->orWhere('trusted_form', 'LIKE', $searchTerm);
+                    });
                 }
 
-                if (!empty($request->source_site_id) && is_array($request->source_site_id)) {
-                    $leads->whereIn('source_site_id', $request->source_site_id);
-                }
+                // Date range filter - supports partial dates
+                if (!empty($request->start_date) && !empty($request->end_date)) {
+                    // Both dates provided - validate and filter between them
+                    $startDate = Carbon::parse($request->start_date)->startOfDay();
+                    $endDate = Carbon::parse($request->end_date)->endOfDay();
 
-                if (!empty($request->campaign_list_id) && is_array($request->campaign_list_id)) {
-                    $leads->whereIn('campaign_list_id', $request->campaign_list_id);
-                }
+                    // Validate that end date is not before start date
+                    if ($endDate->lt($startDate)) {
+                        return response()->json([
+                            'error' => 'End Date cannot be before Start Date'
+                        ], 422);
+                    }
 
-                if (!empty($request->date_subscribed_from) && !empty($request->date_subscribed_to)) {
-                    $dateSubscribedFrom = Carbon::parse($request->date_subscribed_from)->startOfDay();
-                    $dateSubscribedTo = Carbon::parse($request->date_subscribed_to)->endOfDay();
-
-                    $leads->whereBetween('date_subscribed', [$dateSubscribedFrom, $dateSubscribedTo]);
-                }
-
-                if (!empty($request->import_date_from) && !empty($request->import_date_to)) {
-                    $importDateFrom = Carbon::parse($request->import_date_from)->startOfDay();
-                    $importDateTo = Carbon::parse($request->import_date_to)->endOfDay();
-
-                    $leads->whereBetween('import_date', [$importDateFrom, $importDateTo]);
-                }
-
-                if (!empty($request->dob_from) && !empty($request->dob_to)) {
-                    $leads->whereBetween('dob', [$request->dob_from, $request->dob_to]);
-                }
-
-                // Amount-based filtering (greater than or less than)
-                if (
-                    isset($request->tax_debt_amount_operator, $request->tax_debt_amount) &&
-                    $request->tax_debt_amount !== null &&
-                    $request->tax_debt_amount !== ''
-                ) {
-                    $leads->where('tax_debt_amount', $request->tax_debt_amount_operator, $request->tax_debt_amount);
-                }
-
-                if (
-                    isset($request->cc_debt_amount_operator, $request->cc_debt_amount) &&
-                    $request->cc_debt_amount !== null &&
-                    $request->cc_debt_amount !== ''
-                ) {
-                    $leads->where('cc_debt_amount', $request->cc_debt_amount_operator, $request->cc_debt_amount);
+                    $leads->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($request->start_date)) {
+                    // Only start date provided - filter from start date to today
+                    $startDate = Carbon::parse($request->start_date)->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    $leads->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($request->end_date)) {
+                    // Only end date provided - filter from beginning to end date
+                    $endDate = Carbon::parse($request->end_date)->endOfDay();
+                    $leads->where('created_at', '<=', $endDate);
                 }
 
                 return DataTables::of($leads)
@@ -80,8 +108,6 @@ class LeadsController extends Controller
                 ->make(true);
             }
 
-            $campaignListIds = CampaignListId::select('id', 'list_id')->orderBy('created_at', 'desc')->get();
-            $sourceSites = SourceSite::select('id', 'domain')->orderBy('domain', 'asc')->get();
             $exportDaysOfWeek = AppConstants::EXPORT_DAYS_OF_WEEK;
             $userId = auth()->id();
             $leadListingSetting = Setting::where('user_id', $userId)->first();
@@ -90,43 +116,28 @@ class LeadsController extends Controller
                 "full_name" => "Name",
                 "email" => "Email",
                 "phone" => "Phone",
-                "alt_phone" => "Alternate Phone",
-                "address" => "Address",
-                "city" => "City",
-                "state" => "State",
-                "postal" => "Postal Code",
-                "country" => "Country",
-                "ip" => "IP Address",
-                "date_subscribed" => "Date Subscribed",
-                "gender" => "Gender",
-                "offer_url" => "Offer URL",
-                "dob" => "Date of Birth",
-                "tax_debt_amount" => "Tax Debt Amount",
-                "cc_debt_amount" => "Credit Card Debt Amount",
-                "type_of_debt" => "Type of Debt",
-                "home_owner" => "Home Owner",
-                "list_id" => "List ID",
-                "import_date" => "Import Date",
-                "jornaya_id" => "Jornaya ID",
-                "phone_type" => "Phone Type",
-                "trusted_form_id" => "Trusted Form ID",
-                "opt_in" => "Opt-in",
-                "sub_id_1" => "Sub ID 1",
-                "sub_id_2" => "Sub ID 2",
-                "sub_id_3" => "Sub ID 3",
-                "sub_id_4" => "Sub ID 4",
-                "sub_id_5" => "Sub ID 5",
-                "aff_id_1" => "Affiliate ID 1",
-                "aff_id_2" => "Affiliate ID 2",
-                "lead_id" => "Lead ID",
-                "ef_id" => "EF ID",
-                "ck_id" => "CK ID",
-                "page_url" => "Page URL"
+                "email_domain" => "Email Domain",
+                "optin_domain" => "Optin Domain",
+                "domain_abt" => "Domain ABT",
+                "aff_id" => "Affiliate ID",
+                "sub_id" => "Sub ID",
+                "cake_leadid" => "Cake Lead ID",
+                "result" => "Result",
+                "resultid" => "Result ID",
+                "response" => "Response",
+                "journya" => "Journya",
+                "trusted_form" => "Trusted Form",
+                "ip_address" => "IP Address",
+                "esp" => "ESP",
+                "offer_id" => "Offer ID",
+                "is_email_duplicate" => "Is Email Duplicate",
+                "eoapi_success" => "EOAPI Success",
+                "is_ongage" => "Is Ongage",
+                "ongage_response" => "Ongage Response",
+                "ongage_at" => "Ongage At"
             ];
 
             return view('pages.leads', compact(
-                'sourceSites',
-                'campaignListIds',
                 'exportDaysOfWeek',
                 'selectedFields',
                 'defaultFields'
@@ -140,75 +151,56 @@ class LeadsController extends Controller
     public function show($id)
     {
         try {
-            $lead = Lead::findOrFail($id);
+            $lead = AllContact::findOrFail($id);
 
             $leadDetails = [
                 [
-                    'Identifiers' => [
-                        'Lead ID' => $lead->lead_id,
-                        'EF ID' => $lead->ef_id,
-                        'CK ID' => $lead->ck_id,
-                        'Jornaya ID' => $lead->jornaya_id,
-                        'Trusted Form ID' => $lead->trusted_form_id
-                    ],
                     'Basic Lead Information' => [
-                        // 'ID' => $lead->id,
                         'Name' => $lead->first_name . ' ' . $lead->last_name,
                         'Email' => $lead->email,
-                        'Phone' => $lead->phone,
-                        'Alt Phone' => $lead->alt_phone,
-                        'Gender' => $lead->gender,
-                        'Date of Birth' => $lead->dob
+                        'Phone' => $this->formatPhoneNumber($lead->phone),
+                        'Email Domain' => $lead->email_domain,
+                        'Optin Domain' => $lead->optin_domain,
+                        'Domain ABT' => $lead->domain_abt
+                    ],
+                    'Identifiers' => [
+                        'Cake Lead ID' => $lead->cake_leadid,
+                        'Journya' => $lead->journya,
+                        'Trusted Form' => $lead->trusted_form
                     ],
                 ],
                 [
-                    'Address & Location' => [
-                        'Address' => $lead->address,
-                        'City' => $lead->city,
-                        'State' => $lead->state,
-                        'Postal Code' => $lead->postal,
-                        'Country' => $lead->country
+                    'Tracking & IDs' => [
+                        'Affiliate ID' => $lead->aff_id,
+                        'Sub ID' => $lead->sub_id,
+                        'IP Address' => $lead->ip_address,
+                        'ESP' => $lead->esp,
+                        'Offer ID' => $lead->offer_id
                     ],
-                    'Subscription & Offer Details' => [
-                        'Date Subscribed' => $lead->date_subscribed,
-                        'Offer URL' => $lead->offer_url,
-                        'Opt-In URL' => $lead->opt_in
-                    ],
-                ],
-                [
-                    'Financial & Debt Information' => [
-                        'Tax Debt Amount' => $lead->tax_debt_amount,
-                        'Credit Card Debt' => $lead->cc_debt_amount,
-                        'Type of Debt' => $lead->type_of_debt,
-                        'Home Owner' => $lead->home_owner
-                    ],
-                    'Lead Source & Tracking' => [
-                        'List ID' => !empty($lead->campaign_list_data->list_id) ? $lead->campaign_list_data->list_id : '',
-                        'Import Date' => $lead->import_date,
-                        'Source Site' => !empty($lead->source_site_data->domain) ? $lead->source_site_data->domain : '',
-                        'Page URL' => $lead->page_url
+                    'Email Validation' => [
+                        'Result' => $lead->result,
+                        'Result ID' => $lead->resultid,
+                        'Response' => $lead->response
                     ],
                 ],
                 [
-                    'Sub IDs & Affiliate IDs' => [
-                        'Sub ID 1' => $lead->sub_id_1,
-                        'Sub ID 2' => $lead->sub_id_2,
-                        'Sub ID 3' => $lead->sub_id_3,
-                        'Sub ID 4' => $lead->sub_id_4,
-                        'Sub ID 5' => $lead->sub_id_5,
-                        'Aff ID 1' => $lead->aff_id_1,
-                        'Aff ID 2' => $lead->aff_id_2
+                    'Ongage Information' => [
+                        'Is Ongage' => $lead->is_ongage ? 'Yes' : 'No',
+                        'Ongage Response' => $lead->ongage_response,
+                        'Ongage At' => $lead->ongage_at
                     ],
+                    'Status Flags' => [
+                        'Is Email Duplicate' => $lead->is_email_duplicate ? 'Yes' : 'No',
+                        'EOAPI Success' => $lead->eoapi_success ? 'Yes' : 'No'
+                    ],
+                ],
+                [
                     'Metadata' => [
                         'Created At' => $lead->created_at,
                         'Updated At' => $lead->updated_at
                     ]
                 ]
             ];
-
-            if (!empty($lead->extra_fields)) {
-                $leadDetails[] = ['Additional Fields' => $lead->extra_fields];
-            }
 
             return view('pages.lead_show', compact('leadDetails'));
         } catch (\Exception $e) {
@@ -256,39 +248,31 @@ class LeadsController extends Controller
             $filter = $request->post('filter', 'daily'); // Default to daily
             $dateValue = $request->post('date_value'); // Get the selected date, month, or year
 
-            $totalLeadsCount = Lead::count();
-            $query = Lead::with('campaignList')
-                ->select('campaign_list_id')
-                ->selectRaw('COUNT(*) as lead_count')
-                ->groupBy('campaign_list_id');
+            $totalLeadsCount = AllContact::count();
 
-            // Apply filtering based on selected period
+            // Apply filtering based on selected period (using created_at since import_date is removed)
+            $query = AllContact::query();
             if ($filter === 'daily' && $dateValue) {
-                $query->whereDate('import_date', $dateValue);
+                $query->whereDate('created_at', $dateValue);
             } elseif ($filter === 'monthly' && $dateValue) {
-                $query->whereYear('import_date', substr($dateValue, 0, 4))
-                    ->whereMonth('import_date', substr($dateValue, 5, 2));
+                $query->whereYear('created_at', substr($dateValue, 0, 4))
+                    ->whereMonth('created_at', substr($dateValue, 5, 2));
             } elseif ($filter === 'yearly' && $dateValue) {
-                $query->whereYear('import_date', $dateValue);
+                $query->whereYear('created_at', $dateValue);
             }
 
-            // Get filtered data
-            $data = $query->get()->map(function ($row) {
-                return [
-                    'list_id' => optional($row->campaignList)->list_id ?? 'Unassigned',
-                    'lead_count' => $row->lead_count
-                ];
-            })->sortByDesc('lead_count')->values();
+            // Get filtered data - simplified without list_id grouping
+            $data = [['lead_count' => $query->count()]];
 
             // ✅ Calculate total lead count separately
-            $filteredTotalLeadsCount = Lead::where(function ($q) use ($filter, $dateValue) {
+            $filteredTotalLeadsCount = AllContact::where(function ($q) use ($filter, $dateValue) {
                 if ($filter === 'daily' && $dateValue) {
-                    $q->whereDate('import_date', $dateValue);
+                    $q->whereDate('created_at', $dateValue);
                 } elseif ($filter === 'monthly' && $dateValue) {
-                    $q->whereYear('import_date', substr($dateValue, 0, 4))
-                        ->whereMonth('import_date', substr($dateValue, 5, 2));
+                    $q->whereYear('created_at', substr($dateValue, 0, 4))
+                        ->whereMonth('created_at', substr($dateValue, 5, 2));
                 } elseif ($filter === 'yearly' && $dateValue) {
-                    $q->whereYear('import_date', $dateValue);
+                    $q->whereYear('created_at', $dateValue);
                 }
             })->count();
 
@@ -303,5 +287,117 @@ class LeadsController extends Controller
         }
 
         return response()->json(['error' => 'Invalid request'], 400);
+    }
+
+    public function getTestLeads(Request $request)
+    {
+        try {
+            // Find leads where first_name or last_name contains ckmtest/ckmtestpixel
+            // AND email contains ckmtest or ckmtestpixel
+            $testLeads = AllContact::where(function ($query) {
+                $query->where(function ($q) {
+                    $q->where('first_name', 'LIKE', '%ckmtest%')
+                      ->orWhere('last_name', 'LIKE', '%ckmtest%')
+                      ->orWhere('first_name', 'LIKE', '%ckmtestpixel%')
+                      ->orWhere('last_name', 'LIKE', '%ckmtestpixel%');
+                })
+                ->where(function ($q) {
+                    $q->where('email', 'LIKE', '%ckmtest%')
+                      ->orWhere('email', 'LIKE', '%ckmtestpixel%');
+                });
+            })
+            ->select('id', 'first_name', 'last_name', 'email', 'cake_leadid', 'phone', 'created_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+            // Get date range
+            $dateRange = null;
+            if ($testLeads->count() > 0) {
+                $minDate = $testLeads->min('created_at');
+                $maxDate = $testLeads->max('created_at');
+                if ($minDate && $maxDate) {
+                    $dateRange = Carbon::parse($minDate)->format('Y-m-d H:i:s') . ' To ' . Carbon::parse($maxDate)->format('Y-m-d H:i:s');
+                }
+            }
+
+            // Format the data
+            $formattedLeads = $testLeads->map(function ($lead) {
+                return [
+                    'id' => $lead->id,
+                    'name' => $lead->first_name . ' ' . $lead->last_name,
+                    'email' => $lead->email,
+                    'cake_leadid' => $lead->cake_leadid,
+                    'phone' => $this->formatPhoneNumber($lead->phone),
+                    'created_at' => $lead->created_at ? $lead->created_at->format('Y-m-d H:i:s') : 'N/A'
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'total_count' => $testLeads->count(),
+                'display_count' => $testLeads->count(),
+                'date_range' => $dateRange,
+                'leads' => $formattedLeads
+            ]);
+        } catch (\Exception $e) {
+            reportException($e, "Error in getTestLeads method");
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch test leads.'
+            ], 500);
+        }
+    }
+
+    public function deleteTestLeads(Request $request)
+    {
+        try {
+            // Find and delete leads where first_name or last_name contains ckmtest/ckmtestpixel
+            // AND email contains ckmtest or ckmtestpixel
+            $deletedCount = AllContact::where(function ($query) {
+                $query->where(function ($q) {
+                    $q->where('first_name', 'LIKE', '%ckmtest%')
+                      ->orWhere('last_name', 'LIKE', '%ckmtest%')
+                      ->orWhere('first_name', 'LIKE', '%ckmtestpixel%')
+                      ->orWhere('last_name', 'LIKE', '%ckmtestpixel%');
+                })
+                ->where(function ($q) {
+                    $q->where('email', 'LIKE', '%ckmtest%')
+                      ->orWhere('email', 'LIKE', '%ckmtestpixel%');
+                });
+            })->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully deleted {$deletedCount} test lead(s).",
+                'deleted_count' => $deletedCount
+            ]);
+        } catch (\Exception $e) {
+            reportException($e, "Error in deleteTestLeads method");
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete test leads.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Format phone number to (XXX) XXX-XXXX format
+     */
+    private function formatPhoneNumber($phone)
+    {
+        if (empty($phone)) {
+            return $phone;
+        }
+
+        // Remove all non-digit characters
+        $cleaned = preg_replace('/\D/', '', $phone);
+
+        // Format as (XXX) XXX-XXXX if 10 digits
+        if (strlen($cleaned) === 10) {
+            return '(' . substr($cleaned, 0, 3) . ') ' . substr($cleaned, 3, 3) . '-' . substr($cleaned, 6);
+        }
+
+        // Return original if not 10 digits
+        return $phone;
     }
 }

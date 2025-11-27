@@ -4,7 +4,7 @@ namespace App\Repositories;
 class LeadRepository extends Repository
 {
     protected $model;
-    protected $model_name = "App\Models\Lead";
+    protected $model_name = "App\Models\AllContact";
 
     public function __construct()
     {
