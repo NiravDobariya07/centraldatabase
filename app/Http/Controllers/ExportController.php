@@ -641,6 +641,152 @@ class ExportController extends Controller
         }
     }
 
+    public function scheduleSiteTokenExport(Request $request) {
+        try {
+            $scheduleTokenExportPostData = $request->input('schedule_contact_export_data', []);
+
+            // Define validation rules
+            $rules = [
+                'frequency'      => 'required|string|in:one_time,daily,weekly,monthly,custom',
+                'export_type'    => 'required|string',
+                'export_formats' => 'required|array|min:1',
+                'export_columns' => 'required|array|min:1',
+            ];
+
+            // Define custom error messages
+            $messages = [
+                'frequency.required'      => 'The frequency field is required.',
+                'export_type.required'    => 'The export type field is required.',
+                'export_formats.required' => 'The export format field is required.',
+                'export_formats.array'    => 'The export format must be an array.',
+                'export_formats.min'      => 'The export format must contain at least one item.',
+                'export_columns.required' => 'The export columns field is required.',
+                'export_columns.array'    => 'The export columns must be an array.',
+                'export_columns.min'      => 'The export columns must contain at least one item.',
+            ];
+
+            // Perform validation
+            $validator = Validator::make($scheduleTokenExportPostData, $rules, $messages);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors'  => $validator->errors()
+                ], 422);
+            }
+
+            // Default title if not provided
+            $defaultTitle = Carbon::now()->format('l, F j, Y');
+
+            $additionalData = [];
+            if(!empty($scheduleTokenExportPostData['sort_by_field_name']) && !empty($scheduleTokenExportPostData['sort_by_field_order'])) {
+                $additionalData['sort_by'] = [
+                    'field' => $scheduleTokenExportPostData['sort_by_field_name'],
+                    'sorting_order' => $scheduleTokenExportPostData['sort_by_field_order']
+                ];
+            }
+
+            if (!empty($scheduleTokenExportPostData['export_in_batches'])) {
+                $additionalData['export_in_batches'] = 1;
+            }
+
+            $scheduleTokenExportPayloadData = [
+                'user_id'           => auth()->id(),
+                'title'             => !empty(trim($scheduleTokenExportPostData['title'])) ? trim($scheduleTokenExportPostData['title']) : $defaultTitle,
+                'description'       => !empty(trim($scheduleTokenExportPostData['description'])) ? trim($scheduleTokenExportPostData['description']) : null,
+                'file_prefix'       => !empty(trim($scheduleTokenExportPostData['file_prefix'])) ? trim($scheduleTokenExportPostData['file_prefix']) : null,
+                'export_formats'    => !empty($scheduleTokenExportPostData['export_formats']) ? $scheduleTokenExportPostData['export_formats'] : null,
+                'columns'           => !empty($scheduleTokenExportPostData['export_columns']) ? $scheduleTokenExportPostData['export_columns'] : null,
+                'frequency'         => !empty($scheduleTokenExportPostData['frequency']) ? $scheduleTokenExportPostData['frequency'] : null,
+                'day_of_week'       => !empty($scheduleTokenExportPostData['day_of_week']) ? $scheduleTokenExportPostData['day_of_week'] : null,
+                'day_of_month'      => !empty($scheduleTokenExportPostData['day_of_month']) ? $scheduleTokenExportPostData['day_of_month'] : null,
+                'time'              => !empty($scheduleTokenExportPostData['time']) ? $scheduleTokenExportPostData['time'] : null,
+                'additional_data'   => $additionalData,
+                'runing_status'     => AppConstants::EXPORT_RUNING_STATUS['PENDING'],
+                'status'            => AppConstants::EXPORT_STATUSES['ACTIVE']
+            ];
+
+            if (!empty($scheduleTokenExportPostData['export_type']) && $scheduleTokenExportPostData['export_type'] == 'export_filtered_data') {
+                $scheduleTokenExportPayloadData['filters'] = !empty($scheduleTokenExportPostData['filters']) ? $scheduleTokenExportPostData['filters'] : null;
+            }
+
+            // Insert into database
+            $exportScheduledData = Export::create($scheduleTokenExportPayloadData);
+
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['next_run_at' => $exportScheduledData->calculateNextRun()]);
+
+                if ($exportScheduledData->frequency == AppConstants::EXPORT_FREQUENCY_OPTIONS['ONE_TIME']) {
+                    // Process export immediately for "one_time" frequency
+                    $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SCHEDULED']]);
+
+                    try {
+                        // Process export synchronously
+                        $this->processSiteTokenExport($exportScheduledData->id);
+
+                        // Small delay to ensure files are fully written to disk
+                        usleep(500000); // 0.5 second delay
+
+                        // Reload export to get generated files
+                        $exportScheduledData->refresh();
+                        $exportFiles = $exportScheduledData->exportFiles;
+
+                        // Prepare file download links
+                        $fileLinks = [];
+                        foreach ($exportFiles as $file) {
+                            // Verify file exists before adding to download list
+                            if (Storage::disk('local')->exists($file->file_path)) {
+                                $fileLinks[] = [
+                                    'id' => $file->id,
+                                    'name' => $file->file_name,
+                                    'format' => $file->file_format,
+                                    'download_url' => route('export.download.file', $file->id)
+                                ];
+                            }
+                        }
+
+                        // Update status to success
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SUCCESS']]);
+
+                        // Successful response with file links
+                        return response()->json([
+                            'message'       => 'Export completed successfully!',
+                            'exportScheduledData' => $exportScheduledData,
+                            'files' => $fileLinks,
+                            'instant_export' => true
+                        ]);
+                    } catch (\Exception $e) {
+                        // Update status to failed
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+                        reportException($e, "Error processing instant export in scheduleSiteTokenExport method");
+                        return response()->json([
+                            'message' => 'An error occurred while processing the export.',
+                            'error'   => $e->getMessage(),
+                        ], 500);
+                    }
+                }
+
+                // Successful response for scheduled exports
+                return response()->json([
+                    'message'       => 'Export scheduled successfully!',
+                    'exportScheduledData' => $exportScheduledData,
+                    'instant_export' => false
+                ]);
+            } else {
+                return response()->json([
+                    'message'       => 'Export could not scheduled successfully!'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            reportException($e, "Error schedule Site Token Export in scheduleSiteTokenExport method");
+            return response()->json([
+                'message' => 'An error occurred while scheduling the export.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function downloadExportFile($exportFileId) {
         try {
             if (empty($exportFileId)) {

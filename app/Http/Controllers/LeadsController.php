@@ -17,7 +17,7 @@ class LeadsController extends Controller
     {
         try {
             if ($request->ajax()) {
-                $leads = AllContact::select(['*']);
+                $leads = AllContact::select(['*'])->orderBy('created_at', 'desc');
 
                 // Column-specific filter
                 if (!empty($request->filter_column) && !empty($request->search_value)) {

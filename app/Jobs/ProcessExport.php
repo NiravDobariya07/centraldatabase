@@ -41,7 +41,25 @@ class ProcessExport implements ShouldQueue
         $logPrefix = "Export Id ({$this->exportId}) : [ProcessExport]";
         Log::channel('export_daily')->info("✅ {$logPrefix} - Queue: {$this->queueName}, Timeout: {$this->timeout}s, Memory Limit: {$this->worker['memory']}M");
 
-        $this->processLeadExport($this->exportId);
+        $export = Export::find($this->exportId);
+        $modelType = $export->model_type ?? 'AllContact';
+
+        // Route to the appropriate export method based on model_type
+        switch ($modelType) {
+            case 'ConsumerInsiteContact':
+                $this->processConsumerInsiteContactExport($this->exportId);
+                break;
+            case 'TraContact':
+                $this->processTraContactExport($this->exportId);
+                break;
+            case 'Offer':
+                $this->processSiteTokenExport($this->exportId);
+                break;
+            case 'AllContact':
+            default:
+                $this->processLeadExport($this->exportId);
+                break;
+        }
     }
 
     public function failed(\Throwable $exception)

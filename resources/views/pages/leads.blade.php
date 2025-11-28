@@ -1104,6 +1104,11 @@
             thead += '</tr>';
             $('#leads-table thead').html(thead);
 
+            // Find the index of created_at column for ordering
+            var createdAtIndex = selectedColumns.findIndex(col => col.data === 'created_at' || col.name === 'created_at');
+            // If created_at column not found, default to first column (ID)
+            var orderColumnIndex = createdAtIndex >= 0 ? createdAtIndex : 0;
+
             // Reinitialize DataTable
             table = $('#leads-table').DataTable({
                 processing: true,
@@ -1119,7 +1124,7 @@
                     [25, 50, 100, 200, 500], // Values for page length
                     [25, 50, 100, 200, 500]  // Labels shown in dropdown
                 ],
-                order: [[0, 'desc']],
+                order: [[orderColumnIndex, 'desc']],
                 ajax: {
                     url: "{{ route('leads.index') }}",
                     data: function(d) {
@@ -1233,9 +1238,20 @@
             $('#clear_start_date, #clear_end_date').hide();
 
 
-            $("#tax_debt_amount_operator, #tax_debt_amount, #cc_debt_amount_operator, #cc_debt_amount").val("")
+            $("#tax_debt_amount_operator, #tax_debt_amount, #cc_debt_amount_operator, #cc_debt_amount").val("");
+
+            // Find created_at column index for ordering
+            var orderColumnIndex = 0;
+            if (typeof table !== 'undefined' && table) {
+                table.columns().every(function(index) {
+                    if (this.dataSrc() === 'created_at') {
+                        orderColumnIndex = index;
+                        return false; // break
+                    }
+                });
+            }
             $('.CC_debt_amount, .tax_debt_amount').hide();
-            table.order([[0, 'desc']]).draw();
+            table.order([[orderColumnIndex, 'desc']]).draw();
         });
 
         // Trigger search on input change

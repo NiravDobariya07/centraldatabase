@@ -12,6 +12,7 @@ class Setting extends Model
         'user_id',
         'lead_fields',
         'consumer_insite_contact_fields',
-        'tra_contact_fields'
+        'tra_contact_fields',
+        'site_token_fields'
     ];
 }

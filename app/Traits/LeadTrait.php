@@ -931,6 +931,212 @@ trait LeadTrait
         }
     }
 
+    public function processSiteTokenExport($exportId) {
+        Log::channel($this->exportLogChannel)->info('🧠 PHP memory limit: ' . ini_get('memory_limit'));
+        Log::channel($this->exportLogChannel)->info('⏱️ PHP max execution time: ' . ini_get('max_execution_time'));
+
+        DB::beginTransaction();
+        $logPrefix = "Export Id ({$exportId}) :";
+        try {
+            Log::channel($this->exportLogChannel)->info("🚀 {$logPrefix} Site Token export process started", ['export_id' => $exportId]);
+
+            $exportScheduledData = Export::find($exportId);
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['last_run_at' => now()]);
+                $exportQuery = \App\Models\Offer::query();
+
+                // Column-specific filter
+                if (!empty($exportScheduledData->filters['filter_column']) && !empty($exportScheduledData->filters['search_value'])) {
+                    $column = $exportScheduledData->filters['filter_column'];
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+
+                    // Map frontend column names to database column names
+                    $columnMapping = [
+                        'offer_name' => 'offer_name',
+                        'domain_abt' => 'domain_abt',
+                    ];
+
+                    // Get the actual database column name
+                    $dbColumn = $columnMapping[$column] ?? $column;
+
+                    // Apply filter on the specific column
+                    if (in_array($dbColumn, array_values($columnMapping))) {
+                        $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
+                    }
+                } elseif (!empty($exportScheduledData->filters['search_value'])) {
+                    // Fallback: if no column is selected, search across all common fields
+                    $searchTerm = '%' . $exportScheduledData->filters['search_value'] . '%';
+                    $exportQuery->where(function ($query) use ($searchTerm) {
+                        $query->where('offer_name', 'LIKE', $searchTerm)
+                            ->orWhere('domain_abt', 'LIKE', $searchTerm);
+                    });
+                }
+
+                // Date range filter - supports partial dates
+                if (!empty($exportScheduledData->filters['date_range']['from']) && !empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Both dates provided - validate and filter between them
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+
+                    // Validate that end date is not before start date
+                    if ($endDate->lt($startDate)) {
+                        throw new \Exception('End Date cannot be before Start Date');
+                    }
+
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['from'])) {
+                    // Only start date provided - filter from start date to today
+                    $startDate = Carbon::parse($exportScheduledData->filters['date_range']['from'])->startOfDay();
+                    $endDate = Carbon::now()->endOfDay();
+                    $exportQuery->whereBetween('created_at', [$startDate, $endDate]);
+                } elseif (!empty($exportScheduledData->filters['date_range']['to'])) {
+                    // Only end date provided - filter from beginning to end date
+                    $endDate = Carbon::parse($exportScheduledData->filters['date_range']['to'])->endOfDay();
+                    $exportQuery->where('created_at', '<=', $endDate);
+                }
+
+                // Apply sorting if 'sort_by' exists in additional_data
+                $exportQuery->when(!empty($exportScheduledData->additional_data['sort_by']['field']) && !empty($exportScheduledData->additional_data['sort_by']['sorting_order']),
+                    function ($query) use ($exportScheduledData) {
+                        $query->orderBy(
+                            $exportScheduledData->additional_data['sort_by']['field'],
+                            $exportScheduledData->additional_data['sort_by']['sorting_order']
+                        );
+                    }
+                );
+
+                $fields = $exportScheduledData->columns;
+                $filePrefix = $exportScheduledData->file_prefix ?: 'sites_tokens_export';
+                // Snapshot max ID to prevent export of records added during the run
+                $maxId = (clone $exportQuery)->max('id') ?? 0;
+
+                if (!empty($exportScheduledData->export_formats) && is_array($exportScheduledData->export_formats)) {
+                    foreach ($exportScheduledData->export_formats as $exportFilformat) {
+                        Log::channel($this->exportLogChannel)->info("📄 {$logPrefix} Generating export file", ['format' => $exportFilformat]);
+
+                        if (!empty($exportScheduledData->additional_data['export_in_batches'])) {
+                            $generatedExportFileData = $this->exportMultipleFilesAndZip(
+                                $exportQuery,
+                                $fields,
+                                $exportScheduledData->user_id,
+                                $exportId,
+                                $maxId,
+                                $exportFilformat,
+                                $filePrefix,
+                                'Offer'
+                            );
+                        } else {
+                            $generatedExportFileData = $this->exportData(
+                                $exportQuery,
+                                $fields,
+                                $exportScheduledData->user_id,
+                                $exportId,
+                                $maxId,
+                                $exportFilformat,
+                                $filePrefix,
+                                'Offer'
+                            );
+                        }
+
+                        if (!empty($generatedExportFileData['file_path']) && !empty($generatedExportFileData['file_name'])) {
+                            $createFilePostData = [
+                                'export_id' => $exportScheduledData->id,
+                                'user_id' => $exportScheduledData->user_id,
+                                'file_name' => $generatedExportFileData['file_name'],
+                                'file_path' => $generatedExportFileData['file_path'],
+                                'file_format' => $exportFilformat,
+                                'file_size' => !empty($generatedExportFileData['file_size']) ? $generatedExportFileData['file_size'] : 0,
+                                'generated_at' => Carbon::now()->format('Y-m-d H:i:s'),
+                            ];
+                            $exportFileData = ExportFile::create($createFilePostData);
+
+                            if (!empty($exportFileData)) {
+                                Log::channel($this->exportLogChannel)->info(sprintf(
+                                    "✅ {$logPrefix} Export file generated successfully (ID: %d) 📁 Path: %s",
+                                    $exportFileData->id ?? 0,
+                                    $exportFileData->file_path ?? 'N/A'
+                                ));
+
+                                // Queue email AFTER transaction commit
+                                DB::afterCommit(function () use ($exportScheduledData, $exportFileData, $logPrefix) {
+                                    // Send Email through Queue:
+                                    Mail::to($exportScheduledData->user->email)
+                                        ->queue((new ExportFileGeneratedMail($exportFileData))
+                                        ->onQueue('high-priority'));
+
+                                    Log::channel($this->exportLogChannel)->info(sprintf(
+                                        "📧 {$logPrefix} Email notification scheduled for Export File ID: %d → %s",
+                                        $exportFileData->id ?? 0,
+                                        $exportScheduledData->user->email ?? 'N/A'
+                                    ));
+                                });
+                            } else {
+                                Log::channel($this->exportLogChannel)->warning("❗{$logPrefix} Failed to create export file record.", $createFilePostData);
+                                throw new \Exception("Failed to create export file record.");
+                            }
+                        } else {
+                            Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Failed to generate export file.", ['generated_export_data' => $generatedExportFileData]);
+                            throw new \Exception("Failed to generate export file.");
+                        }
+                    }
+                } else {
+                    Log::channel($this->exportLogChannel)->warning("❗ {$logPrefix} Export format not specified for export process.", ['export_scheduled_data' => $exportScheduledData]);
+                    throw new \Exception("No export format specified.");
+                }
+
+                $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PENDING'];
+                $nextRunAt = $exportScheduledData->calculateNextRun();
+                if (!empty($exportScheduledData->frequency) && !empty($exportScheduledData->status)) {
+                    if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['ACTIVE']) {
+                        if ($exportScheduledData->frequency == 'one_time') {
+                            $nextStatus = AppConstants::EXPORT_RUNING_STATUS['SUCCESS'];
+                        }
+                    } else if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['PAUSED']) {
+                        $nextStatus = AppConstants::EXPORT_RUNING_STATUS['PAUSED'];
+                        $nextRunAt = null;
+
+                    } else if ($exportScheduledData->status == AppConstants::EXPORT_STATUSES['STOPPED']) {
+                        $nextStatus = AppConstants::EXPORT_RUNING_STATUS['STOPPED'];
+                        $nextRunAt = null;
+                    }
+                }
+
+                $exportScheduledData->update([
+                    'next_run_at' => $nextRunAt,
+                    'runing_status' => $nextStatus
+                ]);
+
+                Log::channel($this->exportLogChannel)->info("🔄 {$logPrefix} Export schedule updated.", [
+                    'export_id'    => $exportScheduledData->id ?? 'N/A',
+                    'status'       => $exportScheduledData->status ?? 'N/A',
+                    'frequency'    => $exportScheduledData->frequency ?? 'N/A',
+                    'next_run_at'  => $nextRunAt ?? 'N/A',
+                    'next_status'  => $nextStatus ?? 'N/A',
+                ]);
+            } else {
+                Log::channel($this->exportLogChannel)->warning("❌ {$logPrefix} Export not found for Export ID: {$exportId}", [
+                    'export_id' => $exportId ?? 'N/A',
+                ]);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            if (!empty($exportId)) {
+                $exportScheduledData = Export::find($exportId);
+                $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+
+                Log::channel($this->exportLogChannel)->error("❌ {$logPrefix} Export marked as FAILED.", [
+                    'export_id' => $exportId,
+                    'error'     => $e->getMessage()
+                ]);
+            }
+            reportException($e, "Error Export", true, $this->exportLogChannel);
+            throw $e; // Correct syntax for rethrowing the exception
+        }
+    }
+
     public function getExportableRecordCount($exportId) {
         $logPrefix = "Export Id ({$exportId}) :";
         $totalExportableRecordsCount = 0;

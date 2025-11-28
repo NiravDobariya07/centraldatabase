@@ -82,4 +82,11 @@ return [
         "Offer_ID"          => 'offer_id',
         "Response"          => 'response',
     ],
+    'Offer' => [
+        "Offer_Name"        => 'offer_name',
+        "Domain_ABT"        => 'domain_abt',
+        "Auth_Token"        => 'auth_token',
+        "Created_At"        => 'created_at',
+        "Updated_At"        => 'updated_at',
+    ],
 ];

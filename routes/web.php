@@ -80,6 +80,17 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::post('/tra-contacts/test-contacts/delete', [\App\Http\Controllers\TraContactsController::class, 'deleteTestContacts'])->name('tra-contacts.test-contacts.delete');
     Route::post('/tra-contacts/schedule-export', [ExportController::class, 'scheduleTraContactExport'])->name('tra-contacts.export');
 
+    // Sites Tokens Routes
+    Route::get('/sites-tokens', [\App\Http\Controllers\SitesTokenController::class, 'index'])->name('sites-tokens.index');
+    Route::get('/sites-tokens/{id}', [\App\Http\Controllers\SitesTokenController::class, 'show'])->name('sites-tokens.show');
+    Route::post('/sites-tokens', [\App\Http\Controllers\SitesTokenController::class, 'store'])->name('sites-tokens.store');
+    Route::post('/save-site-token-field-setting', [\App\Http\Controllers\SitesTokenController::class, 'saveTokenFieldSetting'])->name('save.site-token.field.setting');
+    Route::get('/reset-site-token-field-setting', [\App\Http\Controllers\SitesTokenController::class, 'resetTokenFieldSetting'])->name('reset.site-token.field.setting');
+    Route::get('/sites-tokens/test-tokens/get', [\App\Http\Controllers\SitesTokenController::class, 'getTestTokens'])->name('sites-tokens.test-tokens.get');
+    Route::post('/sites-tokens/test-tokens/delete', [\App\Http\Controllers\SitesTokenController::class, 'deleteTestTokens'])->name('sites-tokens.test-tokens.delete');
+    Route::post('/sites-tokens/{id}/regenerate-token', [\App\Http\Controllers\SitesTokenController::class, 'regenerateToken'])->name('sites-tokens.regenerate-token');
+    Route::post('/sites-tokens/schedule-export', [ExportController::class, 'scheduleSiteTokenExport'])->name('sites-tokens.export');
+
     Route::get('/exports-listing', [ExportController::class, 'exportsListing'])->name('leads.export.exports-listing');
     Route::get('/exports-files-listing', [ExportController::class, 'exportsFilesListing'])->name('leads.export.exports-files-listing');
     Route::get('/export-schedule-details', [ExportController::class, 'exportScheduleDetails'])->name('export.schedule.details');

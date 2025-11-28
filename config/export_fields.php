@@ -112,5 +112,12 @@ return [
         'response',
         'created_at',
         'updated_at'
+    ],
+
+    'Offer' => [
+        'offer_name',
+        'domain_abt',
+        'created_at',
+        'updated_at'
     ]
 ];

@@ -96,6 +96,13 @@
               </a>
             </li>
 
+            <li class="menu-item menu-item-sites-tokens">
+              <a href="{{ route('sites-tokens.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-key"></i>
+                <div data-i18n="Analytics">Sites Token</div>
+              </a>
+            </li>
+
             <li class="menu-item menu-item-exports">
               <a href="{{ route('leads.export.exports-listing') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-export"></i>
