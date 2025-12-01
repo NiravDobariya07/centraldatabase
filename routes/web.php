@@ -62,6 +62,15 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::post('/save-lead-field-setting', [LeadsController::class, 'saveLeadFieldSetting'])->name('save.lead.field.setting');
     Route::get('/reset-lead-field-setting', [LeadsController::class, 'resetLeadFieldSetting'])->name('reset.lead.field.setting');
 
+    // WhiteCollar Leads Routes
+    Route::get('/whitecollar-leads', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'index'])->name('whitecollar-leads.index');
+    Route::get('/whitecollar-leads/{id}', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'show'])->name('whitecollar-leads.show');
+    Route::get('/whitecollar-leads/test-leads/get', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'getTestLeads'])->name('whitecollar-leads.test-leads.get');
+    Route::post('/whitecollar-leads/test-leads/delete', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'deleteTestLeads'])->name('whitecollar-leads.test-leads.delete');
+    Route::post('/whitecollar-leads/schedule-export', [ExportController::class, 'scheduleWhiteCollarLeadExport'])->name('whitecollar-leads.export');
+    Route::post('/save-whitecollar-lead-field-setting', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'saveWhiteCollarLeadFieldSetting'])->name('save.whitecollar-lead.field.setting');
+    Route::get('/reset-whitecollar-lead-field-setting', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'resetWhiteCollarLeadFieldSetting'])->name('reset.whitecollar-lead.field.setting');
+
     // Consumer Insite Contacts Routes
     Route::get('/consumer-insite-contacts', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'index'])->name('consumer-insite-contacts.index');
     Route::get('/consumer-insite-contacts/{id}', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'show'])->name('consumer-insite-contacts.show');

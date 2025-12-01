@@ -89,4 +89,18 @@ return [
         "Created_At"        => 'created_at',
         "Updated_At"        => 'updated_at',
     ],
+    'FlmApiLead' => [
+        "First_Name"        => 'first_name',
+        "Email_Address"     => 'email_address',
+        "Lead_Timestamp"    => 'lead_timestamp',
+        "Payout_Paid"       => 'payout_paid',
+        "EOAPI_Success"     => 'eoapi_success',
+        "Is_Email_Duplicate" => 'is_email_duplicate',
+        "Result"            => 'result',
+        "Result_ID"         => 'resultid',
+        "Is_Ongage"         => 'is_ongage',
+        "Ongage_At"         => 'ongage_at',
+        "Lead_ID"           => 'lead_id',
+        "Created_At"        => 'created_at',
+    ],
 ];

@@ -13,6 +13,7 @@ class Setting extends Model
         'lead_fields',
         'consumer_insite_contact_fields',
         'tra_contact_fields',
-        'site_token_fields'
+        'site_token_fields',
+        'whitecollar_lead_fields'
     ];
 }

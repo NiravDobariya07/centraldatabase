@@ -82,6 +82,13 @@
               </a>
             </li>
 
+            <li class="menu-item menu-item-whitecollar-leads">
+              <a href="{{ route('whitecollar-leads.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-briefcase"></i>
+                <div data-i18n="Analytics">WhiteCollar Lead Listing</div>
+              </a>
+            </li>
+
             <li class="menu-item menu-item-consumer-insite-contacts">
               <a href="{{ route('consumer-insite-contacts.index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-group"></i>

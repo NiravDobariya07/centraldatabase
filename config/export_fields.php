@@ -119,5 +119,20 @@ return [
         'domain_abt',
         'created_at',
         'updated_at'
+    ],
+
+    'FlmApiLead' => [
+        'first_name',
+        'email_address',
+        'lead_timestamp',
+        'payout_paid',
+        'eoapi_success',
+        'is_email_duplicate',
+        'result',
+        'resultid',
+        'is_ongage',
+        'ongage_at',
+        'lead_id',
+        'created_at'
     ]
 ];

@@ -55,6 +55,9 @@ class ProcessExport implements ShouldQueue
             case 'Offer':
                 $this->processSiteTokenExport($this->exportId);
                 break;
+            case 'FlmApiLead':
+                $this->processWhiteCollarLeadExport($this->exportId);
+                break;
             case 'AllContact':
             default:
                 $this->processLeadExport($this->exportId);

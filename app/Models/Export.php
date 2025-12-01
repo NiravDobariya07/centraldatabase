@@ -13,23 +13,24 @@ class Export extends Model
     protected $table = 'exports';
     protected $fillable = [
         'user_id',
-        'title', 
-        'description', 
-        'file_prefix', 
-        'export_formats', 
+        'title',
+        'description',
+        'file_prefix',
+        'export_formats',
         'filters',
         'additional_data',
         'columns',
-        'frequency', 
-        'day_of_week', 
-        'day_of_month', 
-        'time', 
-        'next_run_at', 
+        'frequency',
+        'day_of_week',
+        'day_of_month',
+        'time',
+        'next_run_at',
         'last_run_at',
         'runing_status',
         'status',
+        'model_type',
     ];
-    
+
     protected $casts = [
         'export_formats'  => 'array',
         'filters'         => 'array',
