@@ -68,13 +68,14 @@
 
           <ul class="menu-inner py-1">
             <!-- Dashboard -->
-            <li class="menu-item menu-item-home active">
+            <li class="menu-item menu-item-home">
               <a href="{{ route('index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-home-circle"></i>
                 <div data-i18n="Analytics">Dashboard</div>
               </a>
             </li>
 
+            <!-- Leads Listing -->
             <li class="menu-item menu-item-leads">
               <a href="{{ route('leads.index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-user-plus"></i>
@@ -82,13 +83,7 @@
               </a>
             </li>
 
-            <li class="menu-item menu-item-whitecollar-leads">
-              <a href="{{ route('whitecollar-leads.index') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-briefcase"></i>
-                <div data-i18n="Analytics">WhiteCollar Lead Listing</div>
-              </a>
-            </li>
-
+            <!-- Consumer Insite Contacts -->
             <li class="menu-item menu-item-consumer-insite-contacts">
               <a href="{{ route('consumer-insite-contacts.index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-group"></i>
@@ -96,6 +91,7 @@
               </a>
             </li>
 
+            <!-- TRA Lead Listing -->
             <li class="menu-item menu-item-tra-contacts">
               <a href="{{ route('tra-contacts.index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-list-ul"></i>
@@ -103,6 +99,15 @@
               </a>
             </li>
 
+            <!-- WhiteCollar Lead Listing -->
+            <li class="menu-item menu-item-whitecollar-leads">
+              <a href="{{ route('whitecollar-leads.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-briefcase"></i>
+                <div data-i18n="Analytics">WhiteCollar Lead Listing</div>
+              </a>
+            </li>
+
+            <!-- Sites Token -->
             <li class="menu-item menu-item-sites-tokens">
               <a href="{{ route('sites-tokens.index') }}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-key"></i>
@@ -110,25 +115,12 @@
               </a>
             </li>
 
-            <li class="menu-item menu-item-exports">
-              <a href="{{ route('leads.export.exports-listing') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-export"></i>
-                <div data-i18n="Analytics">Exports</div>
+            <!-- Blacklist -->
+            <li class="menu-item menu-item-blacklist">
+              <a href="{{ route('blacklist.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-block"></i>
+                <div data-i18n="Analytics">Blacklist</div>
               </a>
             </li>
-
-            <li class="menu-item menu-item-failed-operations">
-              <a href="{{ route('failed-operations.list', ['type' => 'failed-jobs']) }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-error"></i>
-                <div data-i18n="Analytics">Failed Operations</div>
-              </a>
-            </li>
-
-            <!-- <li class="menu-item menu-item-logs">
-              <a href="{{ route('view.admin.logs') }}" target="_blank" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-book"></i>
-                <div data-i18n="Analytics">Logs</div>
-              </a>
-            </li> -->
           </ul>
         </aside>

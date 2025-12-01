@@ -58,6 +58,9 @@ class ProcessExport implements ShouldQueue
             case 'FlmApiLead':
                 $this->processWhiteCollarLeadExport($this->exportId);
                 break;
+            case 'BlacklistListing':
+                $this->processBlacklistExport($this->exportId);
+                break;
             case 'AllContact':
             default:
                 $this->processLeadExport($this->exportId);

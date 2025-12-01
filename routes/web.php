@@ -71,6 +71,13 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::post('/save-whitecollar-lead-field-setting', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'saveWhiteCollarLeadFieldSetting'])->name('save.whitecollar-lead.field.setting');
     Route::get('/reset-whitecollar-lead-field-setting', [\App\Http\Controllers\WhiteCollarLeadsController::class, 'resetWhiteCollarLeadFieldSetting'])->name('reset.whitecollar-lead.field.setting');
 
+    // Blacklist Routes
+    Route::get('/blacklist', [\App\Http\Controllers\BlacklistController::class, 'index'])->name('blacklist.index');
+    Route::get('/blacklist/{id}', [\App\Http\Controllers\BlacklistController::class, 'show'])->name('blacklist.show');
+    Route::post('/save-blacklist-field-setting', [\App\Http\Controllers\BlacklistController::class, 'saveBlacklistFieldSetting'])->name('save.blacklist.field.setting');
+    Route::get('/reset-blacklist-field-setting', [\App\Http\Controllers\BlacklistController::class, 'resetBlacklistFieldSetting'])->name('reset.blacklist.field.setting');
+    Route::post('/blacklist/schedule-export', [ExportController::class, 'scheduleBlacklistExport'])->name('blacklist.export');
+
     // Consumer Insite Contacts Routes
     Route::get('/consumer-insite-contacts', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'index'])->name('consumer-insite-contacts.index');
     Route::get('/consumer-insite-contacts/{id}', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'show'])->name('consumer-insite-contacts.show');

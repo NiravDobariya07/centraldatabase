@@ -134,5 +134,13 @@ return [
         'ongage_at',
         'lead_id',
         'created_at'
+    ],
+
+    'BlacklistListing' => [
+        'email',
+        'response',
+        'source',
+        'created_at',
+        'updated_at'
     ]
 ];

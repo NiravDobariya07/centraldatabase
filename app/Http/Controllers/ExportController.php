@@ -644,6 +644,153 @@ class ExportController extends Controller
         }
     }
 
+    public function scheduleBlacklistExport(Request $request) {
+        try {
+            $scheduleBlacklistExportPostData = $request->input('schedule_lead_export_data', []);
+
+            // Define validation rules
+            $rules = [
+                'frequency'      => 'required|string|in:one_time,daily,weekly,monthly,custom',
+                'export_type'    => 'required|string',
+                'export_formats' => 'required|array|min:1',
+                'export_columns' => 'required|array|min:1',
+            ];
+
+            // Define custom error messages
+            $messages = [
+                'frequency.required'      => 'The frequency field is required.',
+                'export_type.required'    => 'The export type field is required.',
+                'export_formats.required' => 'The export format field is required.',
+                'export_formats.array'    => 'The export format must be an array.',
+                'export_formats.min'      => 'The export format must contain at least one item.',
+                'export_columns.required' => 'The export columns field is required.',
+                'export_columns.array'    => 'The export columns must be an array.',
+                'export_columns.min'      => 'The export columns must contain at least one item.',
+            ];
+
+            // Perform validation
+            $validator = Validator::make($scheduleBlacklistExportPostData, $rules, $messages);
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors'  => $validator->errors(),
+                ], 422); // 422 Unprocessable Entity
+            }
+
+            // Default title if not provided
+            $defaultTitle = Carbon::now()->format('l, F j, Y');
+
+            $additionalData = [];
+            if(!empty($scheduleBlacklistExportPostData['sort_by_field_name']) && !empty($scheduleBlacklistExportPostData['sort_by_field_order'])) {
+                $additionalData['sort_by'] = [
+                    'field' => $scheduleBlacklistExportPostData['sort_by_field_name'],
+                    'sorting_order' => $scheduleBlacklistExportPostData['sort_by_field_order']
+                ];
+            }
+
+            if (!empty($scheduleBlacklistExportPostData['export_in_batches'])) {
+                $additionalData['export_in_batches'] = 1;
+            }
+
+            $scheduleBlacklistExportPayloadData = [
+                'user_id'           => auth()->id(),
+                'title'             => !empty(trim($scheduleBlacklistExportPostData['title'])) ? trim($scheduleBlacklistExportPostData['title']) : $defaultTitle,
+                'description'       => !empty(trim($scheduleBlacklistExportPostData['description'])) ? trim($scheduleBlacklistExportPostData['description']) : null,
+                'file_prefix'       => !empty(trim($scheduleBlacklistExportPostData['file_prefix'])) ? trim($scheduleBlacklistExportPostData['file_prefix']) : null,
+                'export_formats'    => !empty($scheduleBlacklistExportPostData['export_formats']) ? $scheduleBlacklistExportPostData['export_formats'] : null,
+                'columns'           => !empty($scheduleBlacklistExportPostData['export_columns']) ? $scheduleBlacklistExportPostData['export_columns'] : null,
+                'frequency'         => !empty($scheduleBlacklistExportPostData['frequency']) ? $scheduleBlacklistExportPostData['frequency'] : null,
+                'day_of_week'       => !empty($scheduleBlacklistExportPostData['day_of_week']) ? $scheduleBlacklistExportPostData['day_of_week'] : null,
+                'day_of_month'      => !empty($scheduleBlacklistExportPostData['day_of_month']) ? $scheduleBlacklistExportPostData['day_of_month'] : null,
+                'time'              => !empty($scheduleBlacklistExportPostData['time']) ? $scheduleBlacklistExportPostData['time'] : null,
+                'additional_data'   => $additionalData,
+                'runing_status'     => AppConstants::EXPORT_RUNING_STATUS['PENDING'],
+                'status'            => AppConstants::EXPORT_STATUSES['ACTIVE'],
+                'model_type'        => 'BlacklistListing'
+            ];
+
+            if (!empty($scheduleBlacklistExportPostData['export_type']) && $scheduleBlacklistExportPostData['export_type'] == 'export_filtered_data') {
+                $scheduleBlacklistExportPayloadData['filters'] = !empty($scheduleBlacklistExportPostData['filters']) ? $scheduleBlacklistExportPostData['filters'] : null;
+            }
+
+            // Insert into database
+            $exportScheduledData = Export::create($scheduleBlacklistExportPayloadData);
+
+            if (!empty($exportScheduledData)) {
+                $exportScheduledData->update(['next_run_at' => $exportScheduledData->calculateNextRun()]);
+
+                if ($exportScheduledData->frequency == AppConstants::EXPORT_FREQUENCY_OPTIONS['ONE_TIME']) {
+                    // Process export immediately for "one_time" frequency
+                    $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SCHEDULED']]);
+
+                    try {
+                        // Process export synchronously
+                        $this->processBlacklistExport($exportScheduledData->id);
+
+                        // Small delay to ensure files are fully written to disk
+                        usleep(500000); // 0.5 second delay
+
+                        // Reload export to get generated files
+                        $exportScheduledData->refresh();
+                        $exportFiles = $exportScheduledData->exportFiles;
+
+                        // Prepare file download links
+                        $fileLinks = [];
+                        foreach ($exportFiles as $file) {
+                            // Verify file exists before adding to download list
+                            if (Storage::disk('local')->exists($file->file_path)) {
+                                $fileLinks[] = [
+                                    'id' => $file->id,
+                                    'name' => $file->file_name,
+                                    'format' => $file->file_format,
+                                    'download_url' => route('export.download.file', $file->id)
+                                ];
+                            }
+                        }
+
+                        // Update status to success
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['SUCCESS']]);
+
+                        // Successful response with file links
+                        return response()->json([
+                            'message'       => 'Export completed successfully!',
+                            'exportScheduledData' => $exportScheduledData,
+                            'files' => $fileLinks,
+                            'instant_export' => true
+                        ]);
+                    } catch (\Exception $e) {
+                        // Update status to failed
+                        $exportScheduledData->update(['runing_status' => AppConstants::EXPORT_RUNING_STATUS['FAILED']]);
+                        reportException($e, "Error processing instant export in scheduleBlacklistExport method");
+                        return response()->json([
+                            'message' => 'An error occurred while processing the export.',
+                            'error'   => $e->getMessage(),
+                        ], 500);
+                    }
+                }
+
+                // Successful response for scheduled exports
+                return response()->json([
+                    'message'       => 'Export scheduled successfully!',
+                    'exportScheduledData' => $exportScheduledData,
+                    'instant_export' => false
+                ]);
+            } else {
+                return response()->json([
+                    'message'       => 'Export could not scheduled successfully!'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            reportException($e, "Error schedule Blacklist Export in scheduleBlacklistExport method");
+            return response()->json([
+                'message' => 'An error occurred while scheduling the export.',
+                'error'   => $e->getMessage(),
+            ], 500); // 500 Internal Server Error
+        }
+    }
+
     public function scheduleTraContactExport(Request $request) {
         try {
             $scheduleContactExportPostData = $request->input('schedule_contact_export_data', []);
