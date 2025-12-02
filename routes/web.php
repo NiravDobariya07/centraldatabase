@@ -10,6 +10,7 @@ use App\Http\Controllers\LeadsController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FailedOperationsController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\DashboardController;
 
 
 // Route::get('/test', function() {
@@ -40,6 +41,9 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::get('/', function () {
         return view('pages.index');
     })->name('index');
+
+    // Dashboard counts API
+    Route::post('/dashboard-counts', [DashboardController::class, 'getDashboardCounts'])->name('dashboard.counts');
 
     Route::get('/profile', [AdminAuthController::class, 'getProfilePage'])->name('admin.profile');
 

@@ -84,6 +84,50 @@
 
         .view-cake-response-btn {
             cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border-radius: 50%;
+            background-color: #0dcaf0;
+            border: 2px solid #0dcaf0;
+            color: white;
+            margin: 0;
+            transition: all 0.2s ease;
+        }
+
+        .view-cake-response-btn:hover {
+            background-color: #0aa2c0;
+            border-color: #0aa2c0;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .view-cake-response-btn:focus {
+            box-shadow: 0 0 0 0.2rem rgba(13, 202, 240, 0.25);
+        }
+
+        .view-cake-response-btn i {
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 1;
+        }
+
+        /* Center the button in table cell */
+        #whitecollar-leads-table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Ensure the wrapper div centers the button */
+        #whitecollar-leads-table td div[style*="text-align: center"] {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
         }
     </style>
 @endsection
@@ -717,7 +761,7 @@
             {
                 data: 'fetch_paid_response',
                 name: 'fetch_paid_response',
-                title: 'Cake response',
+                title: 'Cake Response',
                 orderable: false,
                 searchable: false,
                 render: function(data, type, row) {
@@ -732,12 +776,12 @@
                             encodedResponse = btoa(unescape(encodeURIComponent(String(responseData))));
                         }
 
-                        return '<button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="' + encodedResponse + '" data-lead-id="' + row.id + '" title="View Cake Response">' +
-                            '<i class="bx bx-info-circle"></i></button>';
+                        return '<div style="text-align: center;"><button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="' + encodedResponse + '" data-lead-id="' + row.id + '" title="View Cake Response">' +
+                            '<i class="bx bx-info-circle"></i></button></div>';
                     } catch (e) {
                         console.error('Error processing response:', e, 'Data:', data);
-                        return '<button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="" data-lead-id="' + row.id + '" title="View Cake Response">' +
-                            '<i class="bx bx-info-circle"></i></button>';
+                        return '<div style="text-align: center;"><button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="" data-lead-id="' + row.id + '" title="View Cake Response">' +
+                            '<i class="bx bx-info-circle"></i></button></div>';
                     }
                 }
             },
@@ -878,7 +922,7 @@
             "fetch_paid_response": {
                 data: 'fetch_paid_response',
                 name: 'fetch_paid_response',
-                title: 'Cake response',
+                title: 'Cake Response',
                 orderable: false,
                 searchable: false,
                 render: function(data, type, row) {
@@ -894,12 +938,12 @@
                             encodedResponse = btoa(unescape(encodeURIComponent(String(responseData))));
                         }
 
-                        return '<button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="' + encodedResponse + '" data-lead-id="' + row.id + '" title="View Cake Response">' +
-                            '<i class="bx bx-info-circle"></i></button>';
+                        return '<div style="text-align: center;"><button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="' + encodedResponse + '" data-lead-id="' + row.id + '" title="View Cake Response">' +
+                            '<i class="bx bx-info-circle"></i></button></div>';
                     } catch (e) {
                         console.error('Error processing response:', e, 'Data:', data);
-                        return '<button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="" data-lead-id="' + row.id + '" title="View Cake Response">' +
-                            '<i class="bx bx-info-circle"></i></button>';
+                        return '<div style="text-align: center;"><button type="button" class="btn btn-sm btn-outline-info view-cake-response-btn" data-response-encoded="" data-lead-id="' + row.id + '" title="View Cake Response">' +
+                            '<i class="bx bx-info-circle"></i></button></div>';
                     }
                 }
             },

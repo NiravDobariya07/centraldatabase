@@ -130,7 +130,7 @@ class WhiteCollarLeadsController extends Controller
                     ],
                     'Payment Information' => [
                         'Payout Paid' => $lead->payout_paid,
-                        'Fetch Paid Response' => $lead->fetch_paid_response,
+                        'Cake Response' => $lead->fetch_paid_response, // This will be replaced with icon button in view
                     ],
                 ],
                 [
@@ -156,7 +156,7 @@ class WhiteCollarLeadsController extends Controller
                 ]
             ];
 
-            return view('pages.whitecollar_lead_show', compact('leadDetails'));
+            return view('pages.whitecollar_lead_show', compact('leadDetails', 'lead'));
         } catch (\Exception $e) {
             reportException($e, "Error in show method while retrieving whitecollar lead details");
             return redirect()->back()->with('error', 'Unable to retrieve whitecollar lead details.');

@@ -32,9 +32,9 @@
             <div class="card-header d-flex align-items-center justify-content-between pb-0">
               <div class="card-title mb-0">
                 <h5 class="fs-3 fw-bolder card-title text-primary">
-                    Leads Report
+                    Dashboard
                     <span id="column-customisation-settings" class="btn btn-light setting-off px-2">
-                      (<span id="all-time-total-lead-count" class="text-primary fw-medium me-1">Loading...</span> Total Leads)
+                      (<span id="all-time-total-lead-count" class="text-primary fw-medium me-1">Loading...</span> Total Records)
                     </span>
                 </h5>
               </div>
@@ -115,10 +115,10 @@
                         <div class="card">
                             <h5 class="card-header"></h5>
                             <div class="table-responsive px-2">
-                                <table class="table table-bordered" id="leadsReportTable">
+                                <table class="table table-bordered" id="dashboardCountsTable">
                                     <thead>
                                       <tr>
-                                        <th class="fs-6">List Id</th>
+                                        <th class="fs-6">Listing Type</th>
                                         <th class="fs-6">No. Of Leads</th>
                                       </tr>
                                     </thead>
@@ -153,7 +153,7 @@
 <script src="{{ asset('vendor/js/chart.js') }}?v={{ currentVersion() }}"></script>
 <script>
  $(document).ready(function () {
-    $('.menu-item').removeClass('active'); 
+    $('.menu-item').removeClass('active');
     $('.menu-item-home').addClass('active');
 
     let statisticsChart = null; // Store chart instance
@@ -251,8 +251,8 @@
       });
     }
 
-    // Ensure DataTable is initialized
-    const LEADS_REPORT_TABLE = $("#leadsReportTable").DataTable({
+    // Ensure DataTable is initialized for dashboard counts
+    const DASHBOARD_COUNTS_TABLE = $("#dashboardCountsTable").DataTable({
         paging: true,
         searching: true,
         ordering: true,
@@ -263,20 +263,20 @@
     });
 
     // ✅ Update DataTable on AJAX success
-    function updateLeadsReportTable(response) {
-      LEADS_REPORT_TABLE.clear(); // ✅ Clear existing data
+    function updateDashboardCountsTable(response) {
+      DASHBOARD_COUNTS_TABLE.clear(); // ✅ Clear existing data
 
       response.data.forEach(item => {
-          LEADS_REPORT_TABLE.row.add([
-              `<span class="fw-semibold">${item.list_id}</span>`, // ✅ Bootstrap class for bold text
-              `<span class="fw-semibold text-primary">${item.lead_count}</span>`
+          DASHBOARD_COUNTS_TABLE.row.add([
+              `<span class="fw-semibold">${item.listing_type}</span>`, // ✅ Bootstrap class for bold text
+              `<span class="fw-semibold text-primary">${item.count.toLocaleString()}</span>`
           ]);
       });
 
-      LEADS_REPORT_TABLE.draw(); // ✅ Redraw table with new data
+      DASHBOARD_COUNTS_TABLE.draw(); // ✅ Redraw table with new data
     }
 
-    function fetchLeadsReport() {
+    function fetchDashboardCounts() {
       const selectedFilter = $("#filterSelect").val();
       let dateValue = "";
 
@@ -290,7 +290,7 @@
 
       $('#preloader').show();
       $.ajax({
-          url: "{{ route('leads.report') }}", // Use named route
+          url: "{{ route('dashboard.counts') }}", // Use named route
           type: "POST",
           data: {
               _token: "{{ csrf_token() }}",
@@ -299,41 +299,42 @@
           },
           success: function (response) {
               $('#preloader').hide();
-              const filteredTotalLeadsCount = response?.filtered_total_leads_count || 0;
-              const totalLeadsCount = response?.total_leads_count || 0;
+
+              // Calculate total filtered count
+              const filteredTotalCount = Object.values(response.filtered_counts || {}).reduce((sum, count) => sum + count, 0);
+              const totalCount = Object.values(response.total_counts || {}).reduce((sum, count) => sum + count, 0);
 
               // Format numbers with commas
-              const formattedTotalLeadsCount = totalLeadsCount.toLocaleString();
-              const formattedFilteredTotalLeadsCount = filteredTotalLeadsCount.toLocaleString();
+              const formattedTotalCount = totalCount.toLocaleString();
+              const formattedFilteredTotalCount = filteredTotalCount.toLocaleString();
 
-              $('#all-time-total-lead-count').text(formattedTotalLeadsCount);
-              $('#selected-period-total-lead-count').text(formattedFilteredTotalLeadsCount);
-
+              $('#all-time-total-lead-count').text(formattedTotalCount);
+              $('#selected-period-total-lead-count').text(formattedFilteredTotalCount);
 
               const filterType = response?.filter || 'daily';
               const dateValue = response?.date_value || '';
 
-              let labelText = "Leads";
+              let labelText = "All Listings";
 
               if (filterType === "daily") {
-                  labelText = `Leads By ${moment(dateValue).format("MMMM D, YYYY")}`;
+                  labelText = `All Listings By ${moment(dateValue).format("MMMM D, YYYY")}`;
               } else if (filterType === "monthly") {
-                  labelText = `Leads By ${moment(dateValue, "YYYY-MM").format("MMMM YYYY")}`;
+                  labelText = `All Listings By ${moment(dateValue, "YYYY-MM").format("MMMM YYYY")}`;
               } else if (filterType === "yearly") {
-                  labelText = `Leads By ${dateValue}`;
+                  labelText = `All Listings By ${dateValue}`;
               }
 
               $('#leads-label').text(labelText);
 
-              updateLeadsReportTable(response);
+              updateDashboardCountsTable(response);
 
-              const labels = response.data.map(item => item.list_id);
-              const series = response.data.map(item => item.lead_count);
+              const labels = response.data.map(item => item.listing_type);
+              const series = response.data.map(item => item.count);
 
               // Generate chart with new data
               renderLeadsReportChart(labels, series);
 
-              if (filteredTotalLeadsCount > 0) {
+              if (filteredTotalCount > 0) {
                 $("#leadsReportChart").show();
                 $("#NoDataMessage").hide();
               } else {
@@ -341,7 +342,7 @@
                 $("#NoDataMessage").show();
               }
 
-              let message = `${filteredTotalLeadsCount} ${labelText}`;
+              let message = `${formattedFilteredTotalCount} ${labelText}`;
               $("#NoDataMessage").text(message);
           },
           error: function (error) {
@@ -402,12 +403,12 @@
     filterSelect.on("change", updateInputs);
 
     // Trigger API call on change
-    $("#filterSelect, #html5-date-input, #html5-month-input, #html5-year-input").on("change", fetchLeadsReport);
+    $("#filterSelect, #html5-date-input, #html5-month-input, #html5-year-input").on("change", fetchDashboardCounts);
 
     updateInputs(); // Initialize on load
-    fetchLeadsReport();
+    fetchDashboardCounts();
 
-    $(document).on('click', '#refresh-leads-report', fetchLeadsReport);
+    $(document).on('click', '#refresh-leads-report', fetchDashboardCounts);
   });
 </script>
 @endsection
