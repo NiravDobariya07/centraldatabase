@@ -36,7 +36,15 @@ class BlacklistController extends Controller
 
                     // Apply filter on the specific column
                     if (in_array($dbColumn, array_values($columnMapping))) {
-                        $blacklist->where($dbColumn, 'LIKE', $searchTerm);
+                        // Special handling for source column - search both source_type and source
+                        if ($dbColumn === 'source') {
+                            $blacklist->where(function ($query) use ($searchTerm) {
+                                $query->where('source_type', 'LIKE', $searchTerm)
+                                    ->orWhere('source', 'LIKE', $searchTerm);
+                            });
+                        } else {
+                            $blacklist->where($dbColumn, 'LIKE', $searchTerm);
+                        }
                     }
                 } elseif (!empty($request->search_value)) {
                     // Fallback: if no column is selected, search across all common fields
@@ -79,6 +87,10 @@ class BlacklistController extends Controller
                     // Combine source_type and source, but avoid duplicates
                     $sourceType = trim($blacklistItem->source_type ?? '');
                     $source = trim($blacklistItem->source ?? '');
+
+                    // Handle null values properly - convert null/empty to empty string
+                    $sourceType = ($sourceType === null || $sourceType === 'null') ? '' : $sourceType;
+                    $source = ($source === null || $source === 'null') ? '' : $source;
 
                     if (empty($sourceType) && empty($source)) {
                         return 'N/A';
@@ -198,8 +210,13 @@ class BlacklistController extends Controller
      */
     private function formatSourceColumn($sourceType, $source)
     {
+        // Handle null values properly - convert null/empty to empty string
         $sourceType = trim($sourceType ?? '');
         $source = trim($source ?? '');
+
+        // Convert string "null" to empty string
+        $sourceType = ($sourceType === null || $sourceType === 'null') ? '' : $sourceType;
+        $source = ($source === null || $source === 'null') ? '' : $source;
 
         if (empty($sourceType) && empty($source)) {
             return 'N/A';

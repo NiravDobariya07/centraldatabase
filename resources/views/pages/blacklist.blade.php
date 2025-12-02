@@ -592,30 +592,9 @@
                 data: 'source',
                 name: 'source',
                 title: 'Source',
-                render: function(data, type, row) {
-                    // Combine source_type and source, but avoid duplicates
-                    var sourceType = (row.source_type || '').trim();
-                    var source = (row.source || '').trim();
-
-                    if (!sourceType && !source) {
-                        return 'N/A';
-                    }
-
-                    // If both are the same, show only once
-                    if (sourceType === source) {
-                        return sourceType || source;
-                    }
-
-                    // If one is empty, show the other
-                    if (!sourceType) {
-                        return source;
-                    }
-                    if (!source) {
-                        return sourceType;
-                    }
-
-                    // If different, combine them
-                    return sourceType + ' - ' + source;
+                render: function(data) {
+                    // Backend already formats the source column, just return it
+                    return data ? data : 'N/A';
                 }
             },
             {
@@ -650,30 +629,9 @@
                 data: 'source',
                 name: 'source',
                 title: 'Source',
-                render: function(data, type, row) {
-                    // Combine source_type and source, but avoid duplicates
-                    var sourceType = (row.source_type || '').trim();
-                    var source = (row.source || '').trim();
-
-                    if (!sourceType && !source) {
-                        return 'N/A';
-                    }
-
-                    // If both are the same, show only once
-                    if (sourceType === source) {
-                        return sourceType || source;
-                    }
-
-                    // If one is empty, show the other
-                    if (!sourceType) {
-                        return source;
-                    }
-                    if (!source) {
-                        return sourceType;
-                    }
-
-                    // If different, combine them
-                    return sourceType + ' - ' + source;
+                render: function(data) {
+                    // Backend already formats the source column, just return it
+                    return data ? data : 'N/A';
                 }
             },
             "created_at": {

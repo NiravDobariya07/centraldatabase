@@ -99,8 +99,8 @@ class SitesTokenController extends Controller
                 ? json_decode($tokenListingSetting->site_token_fields, true)
                 : [];
             $defaultFields = [
-                "domain_abt" => "Domain Name",
-                "offer_name" => "Domain Abbr",
+                "offer_name" => "Domain Name",
+                "domain_abt" => "Domain Abbr",
                 "auth_token" => "Token",
             ];
 
@@ -123,8 +123,8 @@ class SitesTokenController extends Controller
             $tokenDetails = [
                 [
                     'Token Information' => [
-                        'Offer Name' => $token->offer_name,
-                        'Domain ABT' => $token->domain_abt,
+                        'Domain Name' => $token->offer_name,
+                        'Domain Abbr' => $token->domain_abt,
                         'Auth Token' => $token->auth_token,
                     ],
                     'Metadata' => [
@@ -280,26 +280,27 @@ class SitesTokenController extends Controller
         try {
             // Validate the request
             $validated = $request->validate([
-                'domain_abt' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    'url',
-                    'unique:offers,domain_abt,NULL,id,deleted_at,NULL'
-                ],
                 'offer_name' => [
                     'required',
                     'string',
                     'max:255',
+                    'url',
                     'unique:offers,offer_name,NULL,id,deleted_at,NULL'
+                ],
+                'domain_abt' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'unique:offers,domain_abt,NULL,id,deleted_at,NULL'
                 ]
             ], [
-                'domain_abt.required' => 'Domain Name is required.',
-                'domain_abt.url' => 'Please enter a valid URL (e.g., https://www.example.com).',
-                'domain_abt.unique' => 'This Domain Name already exists. Please use a different domain.',
-                'offer_name.required' => 'Domain Abbreviation is required.',
-                'offer_name.max' => 'Domain Abbreviation must not exceed 255 characters.',
-                'offer_name.unique' => 'This Domain Abbreviation already exists. Please use a different abbreviation.'
+                'offer_name.required' => 'Domain Name is required.',
+                'offer_name.url' => 'Please enter a valid URL (e.g., https://www.example.com).',
+                'offer_name.max' => 'Domain Name must not exceed 255 characters.',
+                'offer_name.unique' => 'This Domain Name already exists. Please use a different domain.',
+                'domain_abt.required' => 'Domain Abbr is required.',
+                'domain_abt.max' => 'Domain Abbr must not exceed 255 characters.',
+                'domain_abt.unique' => 'This Domain Abbr already exists. Please use a different abbreviation.'
             ]);
 
             // Generate token

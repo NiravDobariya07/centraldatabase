@@ -1419,7 +1419,15 @@ trait LeadTrait
 
                     // Apply filter on the specific column
                     if (in_array($dbColumn, array_values($columnMapping))) {
-                        $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
+                        // Special handling for source column - search both source_type and source
+                        if ($dbColumn === 'source') {
+                            $exportQuery->where(function ($query) use ($searchTerm) {
+                                $query->where('source_type', 'LIKE', $searchTerm)
+                                    ->orWhere('source', 'LIKE', $searchTerm);
+                            });
+                        } else {
+                            $exportQuery->where($dbColumn, 'LIKE', $searchTerm);
+                        }
                     }
                 } elseif (!empty($exportScheduledData->filters['search_value'])) {
                     // Fallback: if no column is selected, search across all common fields

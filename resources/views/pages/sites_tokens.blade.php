@@ -120,8 +120,8 @@
                                 <label for="filter_column">Select Column Name</label>
                                 <select id="filter_column" class="form-control">
                                     <option value="">Select column Name</option>
-                                    <option value="domain_abt">Domain Name</option>
-                                    <option value="offer_name">Domain Abbr</option>
+                                    <option value="offer_name">Domain Name</option>
+                                    <option value="domain_abt">Domain Abbr</option>
                                 </select>
                             </div>
                             <div class="col-md-8">
@@ -454,8 +454,8 @@
                             <thead>
                                 <tr>
                                     <th>Id</th>
-                                    <th>Offer Name</th>
-                                    <th>Domain ABT</th>
+                                    <th>Domain Name</th>
+                                    <th>Domain Abbr</th>
                                     <th>Auth Token</th>
                                     <th>Created At</th>
                                 </tr>
@@ -663,16 +663,16 @@
                 visible: false
             },
             {
-                data: 'domain_abt',
-                name: 'domain_abt',
+                data: 'offer_name',
+                name: 'offer_name',
                 title: 'Domain Name',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
             {
-                data: 'offer_name',
-                name: 'offer_name',
+                data: 'domain_abt',
+                name: 'domain_abt',
                 title: 'Domain Abbr',
                 render: function(data) {
                     return data ? data : 'N/A';
@@ -696,17 +696,17 @@
         ];
 
         var allFields = {
-            "domain_abt": {
-                data: 'domain_abt',
-                name: 'domain_abt',
+            "offer_name": {
+                data: 'offer_name',
+                name: 'offer_name',
                 title: 'Domain Name',
                 render: function(data) {
                     return data ? data : 'N/A';
                 }
             },
-            "offer_name": {
-                data: 'offer_name',
-                name: 'offer_name',
+            "domain_abt": {
+                data: 'domain_abt',
+                name: 'domain_abt',
                 title: 'Domain Abbr',
                 render: function(data) {
                     return data ? data : 'N/A';
@@ -1325,8 +1325,8 @@
             regenerateTokenData.domainName = domainName;
             regenerateTokenData.$btn = $(this);
 
-            // Update modal content - show Domain Name instead of Domain Abbreviation
-            $('#regenerateTokenName').text('"' + (domainName || tokenName) + '"');
+            // Update modal content - show Domain Name (tokenName is offer_name which is Domain Name)
+            $('#regenerateTokenName').text('"' + (tokenName || domainName) + '"');
 
             // Show modal
             $('#regenerateTokenModal').modal('show');
@@ -1471,8 +1471,8 @@
                 type: 'POST',
                 dataType: 'json',
                 data: {
-                    domain_abt: domainName,
-                    offer_name: domainAbbreviation,
+                    offer_name: domainName,
+                    domain_abt: domainAbbreviation,
                     _token: '{{ csrf_token() }}'
                 },
                 headers: {
@@ -1502,12 +1502,12 @@
                             $('#domain_name, #domain_abbreviation').removeClass('is-invalid');
 
                             // Display validation errors under input fields
-                            if (response.errors.domain_abt) {
-                                $('#domain_name_error').text(response.errors.domain_abt[0]).removeClass('d-none');
+                            if (response.errors.offer_name) {
+                                $('#domain_name_error').text(response.errors.offer_name[0]).removeClass('d-none');
                                 $('#domain_name').addClass('is-invalid');
                             }
-                            if (response.errors.offer_name) {
-                                $('#domain_abbreviation_error').text(response.errors.offer_name[0]).removeClass('d-none');
+                            if (response.errors.domain_abt) {
+                                $('#domain_abbreviation_error').text(response.errors.domain_abt[0]).removeClass('d-none');
                                 $('#domain_abbreviation').addClass('is-invalid');
                             }
                         }
@@ -1529,13 +1529,13 @@
                         if (xhr.responseJSON.errors) {
                             // Display validation errors under input fields
                             var errors = xhr.responseJSON.errors;
-                            if (errors.domain_abt) {
-                                $('#domain_name_error').text(errors.domain_abt[0]).removeClass('d-none');
+                            if (errors.offer_name) {
+                                $('#domain_name_error').text(errors.offer_name[0]).removeClass('d-none');
                                 $('#domain_name').addClass('is-invalid');
                                 hasErrors = true;
                             }
-                            if (errors.offer_name) {
-                                $('#domain_abbreviation_error').text(errors.offer_name[0]).removeClass('d-none');
+                            if (errors.domain_abt) {
+                                $('#domain_abbreviation_error').text(errors.domain_abt[0]).removeClass('d-none');
                                 $('#domain_abbreviation').addClass('is-invalid');
                                 hasErrors = true;
                             }
