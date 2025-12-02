@@ -21,17 +21,17 @@ return new class extends Migration
             throw new \Exception('categories table must exist before creating pivot table');
         }
 
-        Schema::create('category_consumer_insite_contact', function (Blueprint $table) {
+        Schema::create('contact_category', function (Blueprint $table) {
             $table->unsignedInteger('consumer_insite_contact_id');
             $table->unsignedInteger('category_id');
             $table->timestamps();
 
             $table->primary(['consumer_insite_contact_id', 'category_id']);
-            $table->foreign('consumer_insite_contact_id', 'cic_contact_id_foreign')
+            $table->foreign('consumer_insite_contact_id', 'cc_contact_id_foreign')
                 ->references('id')
                 ->on('consumer_insite_contacts')
                 ->onDelete('cascade');
-            $table->foreign('category_id', 'cic_category_id_foreign')
+            $table->foreign('category_id', 'cc_category_id_foreign')
                 ->references('id')
                 ->on('categories')
                 ->onDelete('cascade');
@@ -43,10 +43,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('category_consumer_insite_contact', function (Blueprint $table) {
-            $table->dropForeign('cic_contact_id_foreign');
-            $table->dropForeign('cic_category_id_foreign');
+        Schema::table('contact_category', function (Blueprint $table) {
+            $table->dropForeign('cc_contact_id_foreign');
+            $table->dropForeign('cc_category_id_foreign');
         });
-        Schema::dropIfExists('category_consumer_insite_contact');
+        Schema::dropIfExists('contact_category');
     }
 };
