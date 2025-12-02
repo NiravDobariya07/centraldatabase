@@ -122,5 +122,13 @@
                 <div data-i18n="Analytics">Blacklist</div>
               </a>
             </li>
+
+            <!-- Ext Lead Listing -->
+            <li class="menu-item menu-item-ext-lead-listing">
+              <a href="{{ route('ext-lead-listing.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-list-check"></i>
+                <div data-i18n="Analytics">Ext Lead Listing</div>
+              </a>
+            </li>
           </ul>
         </aside>

@@ -78,6 +78,15 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::get('/reset-blacklist-field-setting', [\App\Http\Controllers\BlacklistController::class, 'resetBlacklistFieldSetting'])->name('reset.blacklist.field.setting');
     Route::post('/blacklist/schedule-export', [ExportController::class, 'scheduleBlacklistExport'])->name('blacklist.export');
 
+    // Ext Lead Listing Routes
+    Route::get('/ext-lead-listing', [\App\Http\Controllers\ExtLeadController::class, 'index'])->name('ext-lead-listing.index');
+    Route::get('/ext-lead-listing/{id}', [\App\Http\Controllers\ExtLeadController::class, 'show'])->name('ext-lead-listing.show');
+    Route::get('/ext-lead-listing/test-leads/get', [\App\Http\Controllers\ExtLeadController::class, 'getTestLeads'])->name('ext-lead-listing.test-leads.get');
+    Route::post('/ext-lead-listing/test-leads/delete', [\App\Http\Controllers\ExtLeadController::class, 'deleteTestLeads'])->name('ext-lead-listing.test-leads.delete');
+    Route::post('/ext-lead-listing/schedule-export', [ExportController::class, 'scheduleExtLeadExport'])->name('ext-lead-listing.export');
+    Route::post('/save-ext-lead-field-setting', [\App\Http\Controllers\ExtLeadController::class, 'saveExtLeadFieldSetting'])->name('save.ext-lead.field.setting');
+    Route::get('/reset-ext-lead-field-setting', [\App\Http\Controllers\ExtLeadController::class, 'resetExtLeadFieldSetting'])->name('reset.ext-lead.field.setting');
+
     // Consumer Insite Contacts Routes
     Route::get('/consumer-insite-contacts', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'index'])->name('consumer-insite-contacts.index');
     Route::get('/consumer-insite-contacts/{id}', [\App\Http\Controllers\ConsumerInsiteContactsController::class, 'show'])->name('consumer-insite-contacts.show');
