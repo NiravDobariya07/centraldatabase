@@ -105,4 +105,46 @@ class DashboardController extends Controller
 
         return response()->json(['error' => 'Invalid request'], 400);
     }
+
+    /**
+     * Get the earliest year from all lead tables
+     */
+    public function getEarliestYear(Request $request)
+    {
+        try {
+            $earliestDates = [];
+
+            // Get earliest created_at from each table
+            $earliestDates[] = AllContact::min('created_at');
+            $earliestDates[] = ConsumerInsiteContact::min('created_at');
+            $earliestDates[] = TraContact::min('created_at');
+            $earliestDates[] = FlmApiLead::min('created_at');
+            $earliestDates[] = Offer::min('created_at');
+            $earliestDates[] = BlacklistListing::min('created_at');
+            $earliestDates[] = ExtLeadContact::min('created_date'); // Note: ExtLeadContact uses created_date
+
+            // Filter out null values and get the earliest date
+            $earliestDates = array_filter($earliestDates);
+
+            if (empty($earliestDates)) {
+                // If no data exists, default to current year
+                $earliestYear = (int) date('Y');
+            } else {
+                // Find the earliest date
+                $earliestDate = min($earliestDates);
+                $earliestYear = (int) date('Y', strtotime($earliestDate));
+            }
+
+            return response()->json([
+                'success' => true,
+                'earliest_year' => $earliestYear
+            ]);
+        } catch (\Exception $e) {
+            // On error, default to current year
+            return response()->json([
+                'success' => true,
+                'earliest_year' => (int) date('Y')
+            ]);
+        }
+    }
 }

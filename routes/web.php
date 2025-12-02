@@ -25,7 +25,7 @@ Route::prefix('admin')->middleware('guest')->group(function () {
     Route::view('/login', 'pages.auth-login-basic')->name('login');
     Route::view('/auth-forgot-password-basic', 'pages.auth-forgot-password-basic')->name('auth-forgot-password-basic');
     Route::post('/send-password-reset-link', [AdminAuthController::class, 'sendPasswordResetLink'])->name('admin.send-password-reset-link');
-    Route::get('password/reset/{token}', [AdminAuthController::class, 'showResetForm'])->name('password.reset');
+    Route::get('password/reset/{encrypted}', [AdminAuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('password/reset', [AdminAuthController::class, 'reset'])->name('password.update');
     Route::post('/login', [AdminAuthController::class, 'login'])->name('admin.login.post');
     Route::get('/2fa', [AdminAuthController::class, 'show2faForm'])->name('admin.2fa.verify')->middleware([Check2FAUserSession::class]);
@@ -44,6 +44,7 @@ Route::prefix('admin')->middleware('auth')->group(function () {
 
     // Dashboard counts API
     Route::post('/dashboard-counts', [DashboardController::class, 'getDashboardCounts'])->name('dashboard.counts');
+    Route::get('/dashboard-earliest-year', [DashboardController::class, 'getEarliestYear'])->name('dashboard.earliest-year');
 
     Route::get('/profile', [AdminAuthController::class, 'getProfilePage'])->name('admin.profile');
 

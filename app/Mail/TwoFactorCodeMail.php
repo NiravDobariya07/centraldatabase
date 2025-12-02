@@ -14,13 +14,15 @@ class TwoFactorCodeMail extends Mailable
     use Queueable, SerializesModels;
 
     public $otp; // OTP property
+    public $userName; // User name property
 
     /**
      * Create a new message instance.
      */
-    public function __construct($otp)
+    public function __construct($otp, $userName = null)
     {
         $this->otp = $otp; // Assign OTP to property
+        $this->userName = $userName; // Assign user name to property
     }
 
     /**
@@ -43,6 +45,7 @@ class TwoFactorCodeMail extends Mailable
             with: [
                 'code' => $this->otp, // Pass OTP to the view
                 'expiry_time' => env('OTP_EXPIRY_TIME', 10), // Get OTP expiry time from .env (defaults to 10 minutes)
+                'user_name' => $this->userName ?? 'User', // Pass user name to the view, default to 'User'
             ],
         );
     }

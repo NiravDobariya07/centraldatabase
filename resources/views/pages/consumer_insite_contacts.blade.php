@@ -710,23 +710,6 @@
                     return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
                         moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
                 }
-            },
-            {
-                data: 'updated_at',
-                name: 'updated_at',
-                title: 'Updated At',
-                render: function(data) {
-                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
-                        moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
-                }
-            },
-            {
-                data: 'deleted_at',
-                name: 'deleted_at',
-                title: 'Deleted At',
-                render: function(data) {
-                    return data == 1 ? 'Yes' : 'No';
-                }
             }
         ];
 
@@ -823,23 +806,6 @@
                 render: function(data) {
                     return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
                         moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
-                }
-            },
-            "updated_at": {
-                data: 'updated_at',
-                name: 'updated_at',
-                title: 'Updated At',
-                render: function(data) {
-                    return (!data || !moment(data, moment.ISO_8601, true).isValid()) ? 'N/A' :
-                        moment.tz(data, appTimezone).format('YYYY-MM-DD HH:mm:ss');
-                }
-            },
-            "deleted_at": {
-                data: 'deleted_at',
-                name: 'deleted_at',
-                title: 'Deleted At',
-                render: function(data) {
-                    return data == 1 ? 'Yes' : 'No';
                 }
             }
         };

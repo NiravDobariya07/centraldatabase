@@ -124,9 +124,7 @@ class ConsumerInsiteContactsController extends Controller
                 "categories" => "Categories",
                 "result" => "Result",
                 "resultid" => "Result ID",
-                "created_at" => "Created At",
-                "updated_at" => "Updated At",
-                "deleted_at" => "Deleted At"
+                "created_at" => "Created At"
             ];
 
             return view('pages.consumer_insite_contacts', compact(

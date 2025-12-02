@@ -120,7 +120,7 @@
                       </g>
                     </svg>
                   </span>
-                  <span class="app-brand-text demo text-body fw-bolder">{{ env('APP_SHORT_NAME_FOR_MODULES', "TRA CDB") }}</span>
+                  <span class="app-brand-text demo text-body fw-bolder">{{ env('APP_SHORT_NAME_FOR_MODULES', "FLM CDB") }}</span>
                 </a>
               </div>
               <!-- /Logo -->
@@ -138,7 +138,7 @@
                     id="email"
                     name="email"
                     placeholder="Enter your email"
-                    value="{{ request('email') }}"
+                    value="{{ $email ?? request('email') }}"
                     readonly
                     autofocus
                   />
@@ -191,7 +191,7 @@
 
     <!-- / Content -->
 
-    
+
 
     <!-- Core JS -->
     <!-- build:js assets/vendor/js/core.js -->

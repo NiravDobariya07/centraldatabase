@@ -12,6 +12,7 @@ use App\Mail\TwoFactorCodeMail;
 use App\Jobs\SendOtpJob;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class AdminAuthController extends Controller
 {
@@ -40,7 +41,7 @@ class AdminAuthController extends Controller
 
                 // Send OTP to user's email
                 // SendOtpJob::dispatch($user->email, $otp)->onQueue(config('queue.queues.high_priority_queue'));
-                Mail::to($user->email)->send(new TwoFactorCodeMail($otp));
+                Mail::to($user->email)->send(new TwoFactorCodeMail($otp, $user->name));
 
                 // Store user details in session to use later for authentication
                 session(['2fa_user_id' => $user->id]);
@@ -119,7 +120,7 @@ class AdminAuthController extends Controller
 
         // Send OTP via email
         // SendOtpJob::dispatch($user->email, $otp)->onQueue(config('queue.queues.high_priority_queue'));
-        Mail::to($user->email)->send(new TwoFactorCodeMail($otp));
+        Mail::to($user->email)->send(new TwoFactorCodeMail($otp, $user->name));
 
         return back()->with('success', 'A new verification code has been sent to your email.');
     }
@@ -151,9 +152,25 @@ class AdminAuthController extends Controller
         }
     }
 
-    public function showResetForm(Request $request, $token)
+    public function showResetForm(Request $request, $encrypted)
     {
-        return view('auth.password-reset', ['token' => $token, 'email' => $request->email]);
+        try {
+            // Verify the signed URL
+            if (!URL::hasValidSignature($request)) {
+                return redirect()->route('login')->with('error', 'Invalid or expired password reset link.');
+            }
+
+            // URL decode and decrypt the data
+            $encryptedData = urldecode($encrypted);
+            $decryptedData = \Illuminate\Support\Facades\Crypt::decrypt($encryptedData);
+
+            $token = $decryptedData['token'];
+            $email = $decryptedData['email'];
+
+            return view('auth.password-reset', ['token' => $token, 'email' => $email]);
+        } catch (\Exception $e) {
+            return redirect()->route('login')->with('error', 'Invalid or expired password reset link.');
+        }
     }
 
     public function reset(Request $request)
@@ -209,7 +226,7 @@ class AdminAuthController extends Controller
             );
 
             // Send OTP to Email
-            Mail::to($user->email)->send(new TwoFactorCodeMail($otp));
+            Mail::to($user->email)->send(new TwoFactorCodeMail($otp, $user->name));
 
             return response()->json([
                 'message' => 'OTP sent successfully!',

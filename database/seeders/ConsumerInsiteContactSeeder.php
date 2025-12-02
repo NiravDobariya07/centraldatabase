@@ -73,10 +73,9 @@ class ConsumerInsiteContactSeeder extends Seeder
             $randomCategories = $faker->randomElements($categories, $faker->numberBetween(1, 3));
             foreach ($randomCategories as $category) {
                 DB::table('contact_category')->insert([
-                    'consumer_insite_contact_id' => $contact->id,
+                    'consumer_id' => $contact->id,
                     'category_id' => $category->id,
                     'created_at' => Carbon::now(),
-                    'updated_at' => Carbon::now(),
                 ]);
             }
         }

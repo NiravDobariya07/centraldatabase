@@ -23,6 +23,6 @@ class Category extends Model
      */
     public function consumerInsiteContacts()
     {
-        return $this->belongsToMany(ConsumerInsiteContact::class, 'contact_category', 'category_id', 'consumer_insite_contact_id');
+        return $this->belongsToMany(ConsumerInsiteContact::class, 'contact_category', 'category_id', 'consumer_id');
     }
 }

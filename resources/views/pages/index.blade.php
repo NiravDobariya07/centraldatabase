@@ -366,13 +366,41 @@
     // Get the current year using Moment.js in the app's timezone
     const currentYear = moment().tz(appTimezone).year();
 
-    // Populate year dropdown from 2025 to current year
-    for (let year = currentYear; year >= 2025; year--) {
-        yearSelect.append($("<option>", { value: year, text: year }));
-    }
+    // Fetch earliest year from when leads began
+    $.ajax({
+        url: "{{ route('dashboard.earliest-year') }}",
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.earliest_year) {
+                const earliestYear = parseInt(response.earliest_year);
 
-    // Set default selected year
-    yearSelect.val(currentYear);
+                // Clear existing options
+                yearSelect.empty();
+
+                // Populate year dropdown from current year down to earliest year
+                for (let year = currentYear; year >= earliestYear; year--) {
+                    yearSelect.append($("<option>", { value: year, text: year }));
+                }
+
+                // Set default selected year
+                yearSelect.val(currentYear);
+            } else {
+                // Fallback: if API fails, use default (2025 to current year)
+                for (let year = currentYear; year >= 2025; year--) {
+                    yearSelect.append($("<option>", { value: year, text: year }));
+                }
+                yearSelect.val(currentYear);
+            }
+        },
+        error: function() {
+            // Fallback: if API fails, use default (2025 to current year)
+            for (let year = currentYear; year >= 2025; year--) {
+                yearSelect.append($("<option>", { value: year, text: year }));
+            }
+            yearSelect.val(currentYear);
+        }
+    });
 
     function updateInputs() {
         const selectedValue = filterSelect.val();
