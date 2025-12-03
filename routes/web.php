@@ -151,6 +151,12 @@ Route::prefix('admin')->middleware('auth')->group(function () {
     Route::get('/logs/{type}/download/{filename}', [FailedOperationsController::class, 'downloadLogFile'])->name('failed-operations.logs.download');
     Route::get('/logs/{type}/delete/{filename}', [FailedOperationsController::class, 'deleteLogFile'])->name('failed-operations.logs.delete');
 
+    // API Logs Routes
+    Route::get('/api-logs', [FailedOperationsController::class, 'getApiLogsList'])->name('api-logs.list');
+    Route::get('/api-logs/view/{filename}', [FailedOperationsController::class, 'viewApiLog'])->name('api-logs.view');
+    Route::get('/api-logs/download/{filename}', [FailedOperationsController::class, 'downloadApiLog'])->name('api-logs.download');
+    Route::get('/api-logs/delete/{filename}', [FailedOperationsController::class, 'deleteApiLog'])->name('api-logs.delete');
+
     // Authentication Pages
     Route::get('/auth-register-basic', function () {
         return view('pages.auth-register-basic');

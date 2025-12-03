@@ -495,4 +495,146 @@ class FailedOperationsController extends Controller
             return back()->with('error', 'An error occurred while deleting the log file.');
         }
     }
+
+    /**
+     * Get API logs list page
+     */
+    public function getApiLogsList(Request $request)
+    {
+        try {
+            $logDirectory = base_path('../api/log');
+            $allLogFiles = collect(File::files($logDirectory))
+                ->filter(function ($file) {
+                    return strpos($file->getFilename(), 'log_') === 0 && $file->getExtension() === 'log';
+                })
+                ->map(function ($file) {
+                    return [
+                        'filename' => $file->getFilename(),
+                        'created_at' => $file->getCTime(),
+                        'size' => $file->getSize()
+                    ];
+                })
+                ->sortByDesc('created_at')
+                ->values()
+                ->toArray();
+
+            // Pagination
+            $logsPerPage = 10;
+            $currentPage = $request->get('page', 1);
+            $totalLogs = count($allLogFiles);
+            $totalPages = ceil($totalLogs / $logsPerPage);
+            $currentPage = max(1, min($currentPage, $totalPages));
+            $startIndex = ($currentPage - 1) * $logsPerPage;
+            $logFiles = array_slice($allLogFiles, $startIndex, $logsPerPage);
+
+            return view('pages.api_logs')->with([
+                'logFiles' => $logFiles,
+                'currentPage' => $currentPage,
+                'totalPages' => $totalPages,
+                'totalLogs' => $totalLogs
+            ]);
+        } catch (\Exception $e) {
+            reportException($e, "Error in getApiLogsList method");
+            return redirect()->back()->with('error', "Failed to fetch API logs list.");
+        }
+    }
+
+    /**
+     * View API log content
+     */
+    public function viewApiLog($filename)
+    {
+        try {
+            $logDirectory = base_path('../api/log');
+            $logFilePath = $logDirectory . DIRECTORY_SEPARATOR . $filename;
+
+            if (!File::exists($logFilePath)) {
+                return redirect()->route('api-logs.list')->with('error', 'Log file not found.');
+            }
+
+            $logContent = File::get($logFilePath);
+
+            // Extract date from filename (log_DD.MM.YYYY.log)
+            $datePart = explode('_', $filename)[1] ?? '';
+            $dateOnly = substr($datePart, 0, -4); // Remove .log extension
+            $dateWithSlashes = str_replace('.', '/', $dateOnly);
+
+            // Define columns to display
+            $columns = [
+                "user_ip",
+                "user_request",
+                "error",
+                "domain_name",
+                "list_id",
+                "email_validation_error",
+                "email_validation",
+                "duplicate_emercury_email",
+                "emercury_response",
+                "emercury_error",
+                "Ongage_database_response",
+                "ongage_success_response",
+                "ongage_error_response",
+                "ongage_error"
+            ];
+
+            return view('pages.view_api_log')->with([
+                'filename' => $filename,
+                'date' => $dateWithSlashes,
+                'columns' => $columns,
+                'logContent' => $logContent
+            ]);
+        } catch (\Exception $e) {
+            reportException($e, "Error in viewApiLog method for file: {$filename}");
+            return redirect()->route('api-logs.list')->with('error', 'Failed to load log file.');
+        }
+    }
+
+    /**
+     * Download API log file
+     */
+    public function downloadApiLog($filename)
+    {
+        try {
+            $logDirectory = base_path('../api/log');
+            $logFilePath = $logDirectory . DIRECTORY_SEPARATOR . $filename;
+
+            if (!File::exists($logFilePath)) {
+                return back()->with('error', 'Log file not found.');
+            }
+
+            $user = auth()->user();
+            Log::channel('log_activity')->info("📥 [{$user->name}] (ID: {$user->id}) downloaded API log '{$filename}'");
+
+            return response()->download($logFilePath, $filename);
+        } catch (\Exception $e) {
+            reportException($e, "Error in downloadApiLog for file: {$filename}");
+            return back()->with('error', 'Something went wrong while downloading the log file.');
+        }
+    }
+
+    /**
+     * Delete API log file
+     */
+    public function deleteApiLog($filename)
+    {
+        try {
+            $logDirectory = base_path('../api/log');
+            $logFilePath = $logDirectory . DIRECTORY_SEPARATOR . $filename;
+
+            if (!File::exists($logFilePath)) {
+                return back()->with('error', 'Log file not found.');
+            }
+
+            File::delete($logFilePath);
+
+            $user = auth()->user();
+            Log::channel('log_activity')->info("🗑️ [{$user->name}] (ID: {$user->id}) deleted API log '{$filename}'");
+
+            return redirect()->route('api-logs.list')
+                ->with('success', 'Log file deleted successfully.');
+        } catch (\Exception $e) {
+            reportException($e, "Error in deleteApiLog for file: {$filename}");
+            return back()->with('error', 'An error occurred while deleting the log file.');
+        }
+    }
 }

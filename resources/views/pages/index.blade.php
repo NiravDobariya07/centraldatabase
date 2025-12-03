@@ -72,9 +72,11 @@
                             <label for="filterSelect" class="col-form-label">Select Period</label>
                             <div>
                               <select id="filterSelect" class="form-select">
-                                <option value="daily">Daily</option>
+                                <option value="daily">Today</option>
+                                <option value="yesterday">Yesterday</option>
                                 <option value="monthly">Monthly</option>
                                 <option value="yearly">Yearly</option>
+                                <option value="total">Total Leads</option>
                               </select>
                             </div>
                           </div>
@@ -208,13 +210,13 @@
               datasets: [{
                   data: series, // Chart Data
                   backgroundColor: [
-                      "#696cff", // Primary
-                      "#8592a3", // Secondary
-                      "#03c3ec", // Info
-                      "#71dd37", // Success
-                      "#ffab00", // Warning
-                      "#ff4c4c", // Danger
-                      "#333333"  // Dark
+                      "#696cff", // Primary - Leads
+                      "#8592a3", // Secondary - Consumer Insite
+                      "#03c3ec", // Info - TRA Lead
+                      "#71dd37", // Success - WhiteCollar Lead
+                      "#ffab00", // Warning - Sites Token
+                      "#ff4c4c", // Danger - Blacklist List
+                      "#333333"  // Dark - Ext Lead
                   ],
                   borderWidth: 2,
                   borderColor: "#fff"
@@ -234,16 +236,52 @@
                       position: "right", // Move legend to the right side
                       labels: {
                           boxWidth: 28, // Smaller legend boxes
-                          padding: 10
+                          padding: 10,
+                          usePointStyle: true,
+                          generateLabels: function(chart) {
+                              // Ensure all labels are shown, even for very small values
+                              const data = chart.data;
+                              if (data.labels.length && data.datasets.length) {
+                                const dataset = data.datasets[0];
+                                const total = dataset.data.reduce((a, b) => a + b, 0);
+                                return data.labels.map((label, i) => {
+                                  const value = dataset.data[i] || 0;
+                                  const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                  return {
+                                    text: label + ': ' + value.toLocaleString() + ' (' + percentage + '%)',
+                                    fillStyle: dataset.backgroundColor[i],
+                                    strokeStyle: dataset.backgroundColor[i],
+                                    hidden: false,
+                                    index: i
+                                  };
+                                });
+                              }
+                              return [];
+                          }
+                      },
+                      onClick: function(e, legendItem) {
+                          // Prevent hiding segments when clicking legend (optional)
+                          // You can remove this if you want normal legend behavior
                       }
                   },
                   tooltip: {
                       enabled: true,
                       callbacks: {
                           label: function (tooltipItem) {
-                              return tooltipItem.raw.toFixed(0); // Remove decimal
+                              const label = tooltipItem.label || '';
+                              const value = tooltipItem.raw || 0;
+                              const total = tooltipItem.dataset.data.reduce((a, b) => a + b, 0);
+                              const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                              return label + ': ' + value.toLocaleString() + ' (' + percentage + '%)';
                           }
                       }
+                  }
+              },
+              // Ensure all segments are visible, even very small ones
+              elements: {
+                  arc: {
+                      borderWidth: 2,
+                      borderAlign: 'center'
                   }
               }
           },
@@ -266,7 +304,10 @@
     function updateDashboardCountsTable(response) {
       DASHBOARD_COUNTS_TABLE.clear(); // ✅ Clear existing data
 
-      response.data.forEach(item => {
+      // Sort by count descending to show largest first, but ensure all items are included
+      const sortedData = [...response.data].sort((a, b) => b.count - a.count);
+
+      sortedData.forEach(item => {
           DASHBOARD_COUNTS_TABLE.row.add([
               `<span class="fw-semibold">${item.listing_type}</span>`, // ✅ Bootstrap class for bold text
               `<span class="fw-semibold text-primary">${item.count.toLocaleString()}</span>`
@@ -282,10 +323,17 @@
 
       if (selectedFilter === "daily") {
           dateValue = $("#html5-date-input").val(); // Format: YYYY-MM-DD
+      } else if (selectedFilter === "yesterday") {
+          // Calculate yesterday's date in the app timezone
+          const yesterday = moment().tz(appTimezone).subtract(1, 'days');
+          dateValue = yesterday.format("YYYY-MM-DD");
       } else if (selectedFilter === "monthly") {
           dateValue = $("#html5-month-input").val(); // Format: YYYY-MM
       } else if (selectedFilter === "yearly") {
           dateValue = $("#html5-year-input").val(); // Format: YYYY
+      } else if (selectedFilter === "total") {
+          // No date value needed for total filter
+          dateValue = "";
       }
 
       $('#preloader').show();
@@ -311,25 +359,36 @@
               $('#all-time-total-lead-count').text(formattedTotalCount);
               $('#selected-period-total-lead-count').text(formattedFilteredTotalCount);
 
-              const filterType = response?.filter || 'daily';
+              const filterType = response?.filter || 'daily'; // Keep 'daily' as internal value for today
               const dateValue = response?.date_value || '';
 
               let labelText = "All Listings";
 
               if (filterType === "daily") {
-                  labelText = `All Listings By ${moment(dateValue).format("MMMM D, YYYY")}`;
+                  labelText = `All Listings By ${moment(dateValue).format("MMMM D, YYYY")} (Today)`;
+              } else if (filterType === "yesterday") {
+                  labelText = `All Listings By ${moment(dateValue).format("MMMM D, YYYY")} (Yesterday)`;
               } else if (filterType === "monthly") {
                   labelText = `All Listings By ${moment(dateValue, "YYYY-MM").format("MMMM YYYY")}`;
               } else if (filterType === "yearly") {
                   labelText = `All Listings By ${dateValue}`;
+              } else if (filterType === "total") {
+                  labelText = "All Listings (Total)";
               }
 
               $('#leads-label').text(labelText);
 
               updateDashboardCountsTable(response);
 
+              // Ensure all data is included, even with zero or very small values
+              // Keep original order to match color scheme
               const labels = response.data.map(item => item.listing_type);
               const series = response.data.map(item => item.count);
+
+              // Debug: Log to ensure all data is present
+              console.log('Chart Labels:', labels);
+              console.log('Chart Series:', series);
+              console.log('Total items:', labels.length, 'Total values:', series.reduce((a, b) => a + b, 0));
 
               // Generate chart with new data
               renderLeadsReportChart(labels, series);
@@ -413,6 +472,18 @@
             yearInput.hide();
             $("#html5-date-input").val(today.format("YYYY-MM-DD"));
             selectedValueText = $("#html5-date-input").val();
+        } else if (selectedValue === "yesterday") {
+            // Hide all inputs for yesterday filter
+            dateInput.hide();
+            monthInput.hide();
+            yearInput.hide();
+            // No need to set a value as it will be calculated in fetchDashboardCounts
+        } else if (selectedValue === "total") {
+            // Hide all inputs for total filter
+            dateInput.hide();
+            monthInput.hide();
+            yearInput.hide();
+            // No date filtering needed for total
         } else if (selectedValue === "monthly") {
             dateInput.hide();
             monthInput.show();

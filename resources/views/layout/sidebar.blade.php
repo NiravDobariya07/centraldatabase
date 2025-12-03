@@ -107,6 +107,14 @@
               </a>
             </li>
 
+            <!-- Ext Lead Listing -->
+            <li class="menu-item menu-item-ext-lead-listing">
+              <a href="{{ route('ext-lead-listing.index') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-list-check"></i>
+                <div data-i18n="Analytics">Ext Lead Listing</div>
+              </a>
+            </li>
+
             <!-- Sites Token -->
             <li class="menu-item menu-item-sites-tokens">
               <a href="{{ route('sites-tokens.index') }}" class="menu-link">
@@ -123,11 +131,11 @@
               </a>
             </li>
 
-            <!-- Ext Lead Listing -->
-            <li class="menu-item menu-item-ext-lead-listing">
-              <a href="{{ route('ext-lead-listing.index') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-list-check"></i>
-                <div data-i18n="Analytics">Ext Lead Listing</div>
+            <!-- API Logs -->
+            <li class="menu-item menu-item-api-logs">
+              <a href="{{ route('api-logs.list') }}" class="menu-link">
+                <i class="menu-icon tf-icons bx bx-file-blank"></i>
+                <div data-i18n="Analytics">API Logs</div>
               </a>
             </li>
           </ul>

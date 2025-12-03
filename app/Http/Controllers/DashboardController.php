@@ -26,12 +26,16 @@ class DashboardController extends Controller
             $applyDateFilter = function ($query, $dateColumn, $filter, $dateValue) {
                 if ($filter === 'daily' && $dateValue) {
                     $query->whereDate($dateColumn, $dateValue);
+                } elseif ($filter === 'yesterday' && $dateValue) {
+                    // Yesterday filter uses the same logic as daily
+                    $query->whereDate($dateColumn, $dateValue);
                 } elseif ($filter === 'monthly' && $dateValue) {
                     $query->whereYear($dateColumn, substr($dateValue, 0, 4))
                         ->whereMonth($dateColumn, substr($dateValue, 5, 2));
                 } elseif ($filter === 'yearly' && $dateValue) {
                     $query->whereYear($dateColumn, $dateValue);
                 }
+                // For 'total' filter, no date filtering is applied (returns all records)
             };
 
             // Get total counts (all time)
@@ -48,40 +52,45 @@ class DashboardController extends Controller
             // Get filtered counts
             $filteredCounts = [];
 
-            // Leads (AllContact) - uses created_at
-            $leadsQuery = AllContact::query();
-            $applyDateFilter($leadsQuery, 'created_at', $filter, $dateValue);
-            $filteredCounts['leads'] = $leadsQuery->count();
+            // If filter is 'total', use total counts directly (no date filtering)
+            if ($filter === 'total') {
+                $filteredCounts = $totalCounts;
+            } else {
+                // Leads (AllContact) - uses created_at
+                $leadsQuery = AllContact::query();
+                $applyDateFilter($leadsQuery, 'created_at', $filter, $dateValue);
+                $filteredCounts['leads'] = $leadsQuery->count();
 
-            // Consumer Insite - uses created_at
-            $consumerInsiteQuery = ConsumerInsiteContact::query();
-            $applyDateFilter($consumerInsiteQuery, 'created_at', $filter, $dateValue);
-            $filteredCounts['consumer_insite'] = $consumerInsiteQuery->count();
+                // Consumer Insite - uses created_at
+                $consumerInsiteQuery = ConsumerInsiteContact::query();
+                $applyDateFilter($consumerInsiteQuery, 'created_at', $filter, $dateValue);
+                $filteredCounts['consumer_insite'] = $consumerInsiteQuery->count();
 
-            // TRA Lead - uses created_at
-            $traLeadQuery = TraContact::query();
-            $applyDateFilter($traLeadQuery, 'created_at', $filter, $dateValue);
-            $filteredCounts['tra_lead'] = $traLeadQuery->count();
+                // TRA Lead - uses created_at
+                $traLeadQuery = TraContact::query();
+                $applyDateFilter($traLeadQuery, 'created_at', $filter, $dateValue);
+                $filteredCounts['tra_lead'] = $traLeadQuery->count();
 
-            // WhiteCollar Lead - uses created_at
-            $whitecollarLeadQuery = FlmApiLead::query();
-            $applyDateFilter($whitecollarLeadQuery, 'created_at', $filter, $dateValue);
-            $filteredCounts['whitecollar_lead'] = $whitecollarLeadQuery->count();
+                // WhiteCollar Lead - uses created_at
+                $whitecollarLeadQuery = FlmApiLead::query();
+                $applyDateFilter($whitecollarLeadQuery, 'created_at', $filter, $dateValue);
+                $filteredCounts['whitecollar_lead'] = $whitecollarLeadQuery->count();
 
-            // Sites Token (Offer) - uses created_at
-            $sitesTokenQuery = Offer::query();
-            $applyDateFilter($sitesTokenQuery, 'created_at', $filter, $dateValue);
-            $filteredCounts['sites_token'] = $sitesTokenQuery->count();
+                // Sites Token (Offer) - uses created_at
+                $sitesTokenQuery = Offer::query();
+                $applyDateFilter($sitesTokenQuery, 'created_at', $filter, $dateValue);
+                $filteredCounts['sites_token'] = $sitesTokenQuery->count();
 
-            // Blacklist List - uses created_at
-            $blacklistQuery = BlacklistListing::query();
-            $applyDateFilter($blacklistQuery, 'created_at', $filter, $dateValue);
-            $filteredCounts['blacklist_list'] = $blacklistQuery->count();
+                // Blacklist List - uses created_at
+                $blacklistQuery = BlacklistListing::query();
+                $applyDateFilter($blacklistQuery, 'created_at', $filter, $dateValue);
+                $filteredCounts['blacklist_list'] = $blacklistQuery->count();
 
-            // Ext Lead - uses created_date (not created_at)
-            $extLeadQuery = ExtLeadContact::query();
-            $applyDateFilter($extLeadQuery, 'created_date', $filter, $dateValue);
-            $filteredCounts['ext_lead'] = $extLeadQuery->count();
+                // Ext Lead - uses created_date (not created_at)
+                $extLeadQuery = ExtLeadContact::query();
+                $applyDateFilter($extLeadQuery, 'created_date', $filter, $dateValue);
+                $filteredCounts['ext_lead'] = $extLeadQuery->count();
+            }
 
             // Format data for table display
             $data = [

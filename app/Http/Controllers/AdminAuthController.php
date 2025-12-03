@@ -341,6 +341,9 @@ class AdminAuthController extends Controller
             $user->name = $request->name;
             $user->save();
 
+            // Refresh the authenticated user in the session to reflect the changes
+            Auth::setUser($user->fresh());
+
             return redirect()->back()->with('success', 'Profile updated successfully!');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'An error occurred while updating the profile. Please try again.');
