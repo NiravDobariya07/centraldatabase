@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('log_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->string('request_ip')->nullable();
-            $table->string('token')->unique();
-            $table->timestamp('expires_at');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('log_access_tokens')) {
+            Schema::create('log_access_tokens', function (Blueprint $table) {
+                $table->id();
+                $table->string('request_ip')->nullable();
+                $table->string('token')->unique();
+                $table->timestamp('expires_at');
+                $table->timestamps();
+            });
+        }
     }
 
     /**

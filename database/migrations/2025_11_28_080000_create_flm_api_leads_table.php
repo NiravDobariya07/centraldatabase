@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('flm_api_leads')) {
+            return;
+        }
+
         Schema::create('flm_api_leads', function (Blueprint $table) {
             $table->increments('id');
             $table->string('first_name', 255)->nullable();

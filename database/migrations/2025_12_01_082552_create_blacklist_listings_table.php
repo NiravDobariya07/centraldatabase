@@ -12,6 +12,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('blacklist_listings')) {
+            return;
+        }
+
         Schema::create('blacklist_listings', function (Blueprint $table) {
             $table->increments('id');
             $table->string('email', 100)->nullable();

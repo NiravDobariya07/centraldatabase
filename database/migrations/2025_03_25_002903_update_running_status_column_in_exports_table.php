@@ -10,22 +10,30 @@ return new class extends Migration {
     {
         // Step 1: Rename old column
         Schema::table('exports', function (Blueprint $table) {
-            $table->renameColumn('runing_status', 'old_runing_status');
+            if (Schema::hasColumn('exports', 'runing_status') && !Schema::hasColumn('exports', 'old_runing_status')) {
+                $table->renameColumn('runing_status', 'old_runing_status');
+            }
         });
 
         // Step 2: Create new column with updated values and default 'pending'
         Schema::table('exports', function (Blueprint $table) {
-            $table->enum('runing_status', [
-                'scheduled', 'success', 'failed', 'pending', 'paused', 'stopped'
-            ])->default('pending')->nullable();
+            if (!Schema::hasColumn('exports', 'runing_status')) {
+                $table->enum('runing_status', [
+                    'scheduled', 'success', 'failed', 'pending', 'paused', 'stopped'
+                ])->default('pending')->nullable();
+            }
         });
 
         // Step 3: Copy old values to new column (✅ removed "::text")
-        DB::statement("UPDATE exports SET runing_status = COALESCE(old_runing_status, 'pending')");
+        if (Schema::hasColumn('exports', 'old_runing_status') && Schema::hasColumn('exports', 'runing_status')) {
+            DB::statement("UPDATE exports SET runing_status = COALESCE(old_runing_status, 'pending')");
+        }
 
         // Step 4: Drop the old column
         Schema::table('exports', function (Blueprint $table) {
-            $table->dropColumn('old_runing_status');
+            if (Schema::hasColumn('exports', 'old_runing_status')) {
+                $table->dropColumn('old_runing_status');
+            }
         });
     }
 

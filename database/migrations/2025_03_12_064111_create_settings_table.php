@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('settings', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')
-                ->constrained('users')
-                ->onDelete('cascade');
-            $table->json('lead_fields'); 
-            $table->index('user_id');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('settings')) {
+            Schema::create('settings', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')
+                    ->constrained('users')
+                    ->onDelete('cascade');
+                $table->json('lead_fields'); 
+                $table->index('user_id');
+                $table->timestamps();
+            });
+        }
     }
 
     /**

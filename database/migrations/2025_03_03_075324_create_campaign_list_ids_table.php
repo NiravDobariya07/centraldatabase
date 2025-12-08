@@ -6,11 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up() {
-        Schema::create('campaign_list_ids', function (Blueprint $table) {
-            $table->bigIncrements('id'); // Primary Key
-            $table->string('list_id')->unique(); // The original campaign list ID
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('campaign_list_ids')) {
+            Schema::create('campaign_list_ids', function (Blueprint $table) {
+                $table->bigIncrements('id'); // Primary Key
+                $table->string('list_id')->unique(); // The original campaign list ID
+                $table->timestamps();
+            });
+        }
     }
 
     public function down() {

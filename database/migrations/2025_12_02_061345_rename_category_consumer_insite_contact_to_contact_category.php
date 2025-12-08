@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Check if the old table exists before renaming
-        if (Schema::hasTable('category_consumer_insite_contact')) {
+        if (Schema::hasTable('category_consumer_insite_contact') && !Schema::hasTable('contact_category')) {
             // Drop foreign keys first
             Schema::table('category_consumer_insite_contact', function (Blueprint $table) {
                 $table->dropForeign('cic_contact_id_foreign');

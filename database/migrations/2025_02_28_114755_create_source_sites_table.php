@@ -6,11 +6,13 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up() {
-        Schema::create('source_sites', function (Blueprint $table) {
-            $table->id();
-            $table->string('domain')->unique();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('source_sites')) {
+            Schema::create('source_sites', function (Blueprint $table) {
+                $table->id();
+                $table->string('domain')->unique();
+                $table->timestamps();
+            });
+        }
     }
 
     public function down() {

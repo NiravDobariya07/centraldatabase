@@ -21,7 +21,8 @@ return new class extends Migration
             throw new \Exception('categories table must exist before creating pivot table');
         }
 
-        Schema::create('contact_category', function (Blueprint $table) {
+        if (!Schema::hasTable('contact_category')) {
+            Schema::create('contact_category', function (Blueprint $table) {
             $table->unsignedInteger('consumer_insite_contact_id');
             $table->unsignedInteger('category_id');
             $table->timestamps();
@@ -36,6 +37,7 @@ return new class extends Migration
                 ->on('categories')
                 ->onDelete('cascade');
         });
+        }
     }
 
     /**

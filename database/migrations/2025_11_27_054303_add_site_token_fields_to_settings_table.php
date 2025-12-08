@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('settings', function (Blueprint $table) {
-            $table->json('site_token_fields')->nullable()->after('tra_contact_fields');
+            if (!Schema::hasColumn('settings', 'site_token_fields')) {
+                $table->json('site_token_fields')->nullable()->after('tra_contact_fields');
+            }
         });
     }
 

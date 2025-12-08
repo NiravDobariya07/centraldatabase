@@ -12,7 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('settings', function (Blueprint $table) {
-            $table->json('tra_contact_fields')->nullable()->after('consumer_insite_contact_fields');
+            if (!Schema::hasColumn('settings', 'tra_contact_fields')) {
+                $table->json('tra_contact_fields')->nullable()->after('consumer_insite_contact_fields');
+            }
         });
     }
 
